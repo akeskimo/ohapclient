@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">OHAP Client 13</string>
+
+    <!-- Menu items -->
     <string name="action_settings">Settings</string>
-    <string name="device_name">TBD This must be device name</string>
+
+    <!-- Widgets -->
+    <string name="device_name">Device (init)</string>
+    <string name="device_desc">Description (init)</string>
+    <string name="container_name">Container hierarchy (init)</string>
+    <string name="switch_text">Change binary value</string>
+    <string name="seekbar_text">Change decimal value</string>
+
 </resources>

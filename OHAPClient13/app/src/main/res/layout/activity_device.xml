@@ -5,34 +5,78 @@
     android:orientation="vertical"
     tools:context=".DeviceActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="New Text"
-        android:id="@+id/textView" />
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/device_name"
-        android:id="@+id/textView2" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/container_name"
+            android:id="@+id/textViewContainerName"
+            android:layout_gravity="center_horizontal"
+            android:textSize="@dimen/text_size" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="New Text"
-        android:id="@+id/textView3" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/device_name"
+            android:id="@+id/textViewDeviceName"
+            android:layout_gravity="center_horizontal"
+            android:textSize="@dimen/text_size" />
 
-    <SeekBar
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/seekBar"
-        android:visibility="visible" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/device_desc"
+            android:id="@+id/textViewDeviceDesc"
+            android:layout_gravity="center_horizontal"
+            android:textSize="@dimen/text_size" />
+    </LinearLayout>
 
-    <Switch
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="New Switch"
-        android:id="@+id/switch1"
-        android:visibility="visible" />
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/switch_text"
+            android:textSize="@dimen/text_size"
+            android:id="@+id/textViewSwitch"
+            android:layout_gravity="center_horizontal" />
+
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/switch1"
+            android:visibility="visible"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/seekbar_text"
+            android:textSize="@dimen/text_size"
+            android:id="@+id/textViewSeekBar"
+            android:layout_gravity="center_horizontal" />
+
+        <SeekBar
+            android:layout_width="@dimen/seekbar_width"
+            android:layout_height="wrap_content"
+            android:id="@+id/seekBar"
+            android:visibility="visible"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
 </LinearLayout>
