@@ -18,7 +18,8 @@ GIT INSTRUCTIONS:
 
 
 clone (create local version of repository)
- 1. git clone https://akeskimo@bitbucket.org/akeskimo/esde-2016-013.git
+ 1. cd to desired directory
+ 2. git clone https://akeskimo@bitbucket.org/akeskimo/esde-2016-013.git
 
 
 checkout (update local version with the target repository)
