@@ -14,6 +14,24 @@ Second member: Mikko Yliniemi, 1930360, mikkoyli@paju.oulu.fi, mokko
 
 
 
+GIT INSTRUCTIONS:
+
+
+clone (create local version of repository)
+ 1. git clone https://akeskimo@bitbucket.org/akeskimo/esde-2016-013.git
+
+
+checkout (update local version with the target repository)
+ 1. git status 		checks the current status of the branch
+ 2. git checkout
+
+
+commit 
+ 1. git status
+ 2. git add/rm filename (add or remove files, if needed)
+ 3. git status (all must be green!)
+ 4. git commit -m "Message explaining what has modified in the branch"
+ 5. git push
 
 
 BUILD INSTRUCTIONS:
