@@ -33,7 +33,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 
-public class DeviceActivity extends ActionBarActivity implements CompoundButton.OnCheckedChangeListener {
+public class DeviceActivity extends ActionBarActivity implements CompoundButton.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener {
     //////////////////////////////////////////////////////////////////////////////////
     // Main Activity for OHAPClient13.java
     //////////////////////////////////////////////////////////////////////////////////
@@ -76,11 +76,9 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
 
         // Getting reference for seekbar (for changing decimal value)
         seekBar = (SeekBar)(findViewById(R.id.seekBar));
-        // TODO MOKKO Implement listener for Seekbar and setText on the text widget above to reflect that value. Hint: Google "Seekbar listener"
-        // Register new listener for the seekbar bar action. You may use the Switch -method as an example.
-        // ... call the listener here
+        seekBar.setOnSeekBarChangeListener(this); // start listening for seekbar user input
 
-        // Getting reference for switch object (for changing binary value)
+            // Getting reference for switch object (for changing binary value)
         switch1 = (Switch)(findViewById(R.id.switch1));
         switch1.setOnCheckedChangeListener(this); // start listening for switch bar user input
 
@@ -100,7 +98,7 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
 
         // Initializing attributes for the dummy device
         activeDeviceName = getResources().getString(R.string.device_name);
-        activeDeviceType = Device.Type.SENSOR;
+        activeDeviceType = Device.Type.ACTUATOR;
         activeDeviceValueType = Device.ValueType.DECIMAL;
 
         // Instantiating dummy device
@@ -147,9 +145,18 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         textViewSwitchValue.setText(Boolean.toString(dummyDevice.getBinaryValue())); // display device value
     }
 
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        // Implementation for the method that is called whenever the decimal seekbar value has changed
+        dummyDevice.setDecimalValue(progress);
+        textViewSeekBarValue.setText(Double.toString(dummyDevice.getDecimalValue())); // display device value
+    }
 
-    // TODO MOKKO Add SeekBar call method(s) here
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {}
 
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {}
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
