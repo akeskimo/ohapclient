@@ -7,4 +7,5 @@
     <!-- Common attributes -->
     <dimen name="text_size">16sp</dimen>
     <dimen name="seekbar_width">150sp</dimen>
+
 </resources>

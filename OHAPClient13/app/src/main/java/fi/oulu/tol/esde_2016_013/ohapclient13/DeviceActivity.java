@@ -1,21 +1,29 @@
 package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 /**
- * Device activity for an OHAP application.
+ * Description:
+ * Main Activity for an OHAP client application for monitoring and actuating house devices via
+ * remote control Android application
+ *
+ * Compatibility:
+ * Android SDK API15 and up
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version with layout, OHAP server, 1 dummy device, widgets and listeners
+ * v1.1     Aapo Keskimolo      Changed visibility of widgets, Added logging, Changed app title to device name and did some maintenance
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.0
+ * @version 1.1
  */
 
 import com.opimobi.ohap.*;
 
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.SeekBar;
@@ -26,6 +34,12 @@ import java.net.URL;
 
 
 public class DeviceActivity extends ActionBarActivity implements CompoundButton.OnCheckedChangeListener {
+    //////////////////////////////////////////////////////////////////////////////////
+    // Main Activity for OHAPClient13.java
+    //////////////////////////////////////////////////////////////////////////////////
+
+    // Log tag
+    private static final String TAG = "DeviceActivity";
 
     // Widgets
     private TextView textViewContainerName = null;
@@ -34,63 +48,97 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
     private SeekBar seekBar = null;
     private Switch switch1 = null;
     private TextView textViewSwitchValue = null;
+    private TextView textViewSeekBarValue = null;
 
     // OHAP applications
     CentralUnit centralUnit = null;
     Device dummyDevice = null;
 
+    // Global Variables
+    private Device.Type activeDeviceType = null;
+    private Device.ValueType activeDeviceValueType = null;
+    private String activeDeviceName = "";
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // Loading XML layout
+        // Loading XML layout and saving Bundle of instance state
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
 
-        // Instantiating widgets
-        // note: findViewById returns View object, which is a super class of Widget class. Therefore,
-        // all view objects need to be down-cast to target Widgets objects.
+        // Getting references for Text View Widgets
         textViewContainerName = (TextView)(findViewById(R.id.textViewContainerName));
         textViewDeviceName = (TextView)(findViewById(R.id.textViewDeviceName));
         textViewDeviceDesc = (TextView)(findViewById(R.id.textViewDeviceDesc));
+        textViewSeekBarValue = (TextView)(findViewById(R.id.textViewSeekBar)); // displays dec value
+        textViewSwitchValue = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
 
-        // Instantiating seekbar (for changing decimal value)
+        // Getting reference for seekbar (for changing decimal value)
         seekBar = (SeekBar)(findViewById(R.id.seekBar));
-        // TODO Implement listener for Seekbar and method for changing the decimal value on the text widget above. You may use the Switch -method as an example. Hint: Google "Seekbar listener"
-        // Registering new listener for the switch bar action
-        // ...
-        // Instatiating widget for displaying the current decimal value
-        // ...
+        // TODO MOKKO Implement listener for Seekbar and setText on the text widget above to reflect that value. Hint: Google "Seekbar listener"
+        // Register new listener for the seekbar bar action. You may use the Switch -method as an example.
+        // ... call the listener here
 
-        // Instantiating switch object for changing binary value)
+        // Getting reference for switch object (for changing binary value)
         switch1 = (Switch)(findViewById(R.id.switch1));
-        // Registering new listener for the switch bar action
-        switch1.setOnCheckedChangeListener(this);
-        // Instatiating widget for displaying the current binary value
-        textViewSwitchValue = (TextView)(findViewById(R.id.textViewSwitch));
+        switch1.setOnCheckedChangeListener(this); // start listening for switch bar user input
+
+
+        //////////////////////////////////////////////////////////////////////////////////
+        // Startup OHAP Server Application and instantiate devices
+        //////////////////////////////////////////////////////////////////////////////////
 
         // Instantiating OHAP server
-//        CentralUnit centralUnit = null;
         try {
             // Java enforces try-catch statement for MalformedURLException
             centralUnit = new CentralUnitConnection(new URL("http://ohap.opimobi.com:8080/"));
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-        centralUnit.setName("OHAP Test Server");
+        centralUnit.setName(getResources().getString(R.string.container_name));
 
-        // Instantiating a dummy
-        // device with dummy values
-        dummyDevice = new Device(centralUnit, 1, Device.Type.ACTUATOR, Device.ValueType.BINARY);
-        dummyDevice.setName("Dummy Device");
-        dummyDevice.setDescription("Description of the Dummy Device");
-        dummyDevice.setBinaryValue(false);
+        // Initializing attributes for the dummy device
+        activeDeviceName = getResources().getString(R.string.device_name);
+        activeDeviceType = Device.Type.SENSOR;
+        activeDeviceValueType = Device.ValueType.DECIMAL;
 
-        // set values on the TextView objects
+        // Instantiating dummy device
+        dummyDevice = new Device(centralUnit, 1, activeDeviceType, activeDeviceValueType);
+
+        // Setting attributes for dummy device
+        dummyDevice.setName(activeDeviceName);
+        dummyDevice.setDescription(getResources().getString(R.string.device_desc));
+
+        // Change App title to show active device type
+        if (activeDeviceType == Device.Type.ACTUATOR) {
+            setTitle("Actuator");
+        }
+        else if (activeDeviceType == Device.Type.SENSOR) {
+            setTitle("Sensor");
+        } else {
+            Log.wtf(TAG, "Unable to set App title: Invalid device type (" + activeDeviceType + ")");
+        }
+
+        // Change the visibility of bars according to active device value type: Switch is visible
+        // with binary and seekbar with decimal value type
+        if (activeDeviceValueType == Device.ValueType.BINARY) {
+            seekBar.setVisibility(View.GONE);
+            textViewSeekBarValue.setVisibility(View.GONE);
+        } else if (activeDeviceValueType == Device.ValueType.DECIMAL ) {
+            switch1.setVisibility(View.GONE);
+            textViewSwitchValue.setVisibility(View.GONE);
+        } else {
+            Log.wtf(TAG, "Unable to set device visibility: Invalid device value type (" + activeDeviceValueType + ")");
+        }
+
+        // set values on the TextView objects to the device values
+        // TODO The top TextView should show the container hierarchy (not documented -> ask teacher)
+        textViewContainerName.setText(centralUnit.getName());
         textViewDeviceName.setText(dummyDevice.getName());
         textViewDeviceDesc.setText(dummyDevice.getDescription());
-        // TODO The top TextView should show the container hierarchy (not documented -> ask teacher)
-        textViewContainerName.setText("Container hierarchy (TBD)");
     }
+
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -99,7 +147,9 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         textViewSwitchValue.setText(Boolean.toString(dummyDevice.getBinaryValue())); // display device value
     }
 
-    // TODO Add SeekBar call method(s) here
+
+    // TODO MOKKO Add SeekBar call method(s) here
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -107,6 +157,7 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         getMenuInflater().inflate(R.menu.menu_device, menu);
         return true;
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -124,3 +175,10 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
     }
 
 }
+
+
+
+/**
+ * Future ideas
+  * - Create auto-testers for widgets
+ */

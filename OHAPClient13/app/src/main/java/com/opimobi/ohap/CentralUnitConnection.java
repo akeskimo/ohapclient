@@ -11,20 +11,24 @@ package com.opimobi.ohap;
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version, implemented superclass abstract methods
+ * v1.1     Aapo Keskimolo      Added logging
  *
  * @see com.opimobi.ohap.CentralUnit
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.0
+ * @version 1.1
  */
 
 
 import android.util.Log;
 import java.net.URL;
 
-
 public class CentralUnitConnection extends CentralUnit {
 
+    // Log tag
+    private static final String TAG = "CentralUnitConnection";
+
+    // constructing the class by using super class constructor
     public CentralUnitConnection(URL newUrl) {
         super(newUrl);
     }
@@ -34,23 +38,23 @@ public class CentralUnitConnection extends CentralUnit {
 
         if (listening) {
             container.startListening();
-            System.out.println("OHAP Server is listening to connections.");
+            Log.i(TAG, "OHAP Server is listening to connections.");
         }
         else {
             container.stopListening();
-            System.out.println("OHAP Server stopped listening to connections.");
+            Log.i(TAG, "OHAP Server stopped listening to connections.");
         }
     }
 
     @Override
     protected void changeBinaryValue(Device device, boolean value) {
         device.changeBinaryValue(value);
-        Log.i("DEBUG", "Binary value changed: " + value);
+        Log.d(TAG, "Binary value changed: " + value);
     }
 
     @Override
     protected void changeDecimalValue(Device device, double value) {
         device.changeDecimalValue(value);
-        Log.i("DEBUG", "Decimal value changed: " + value);
+        Log.d(TAG, "Decimal value changed: " + value);
     }
 }
