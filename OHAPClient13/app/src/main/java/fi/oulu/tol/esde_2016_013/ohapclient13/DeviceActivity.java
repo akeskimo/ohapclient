@@ -11,9 +11,10 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version with layout, OHAP server, 1 dummy device, widgets and listeners
  * v1.1     Aapo Keskimolo      Changed visibility of widgets, Added logging, Changed app title to device name and did some maintenance
+ * v1.2     Aapo Keskimolo      Made DeviceActivity 2nd entry for app and removed dummy code
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.1
+ * @version 1.2
  */
 
 import com.opimobi.ohap.*;
@@ -30,35 +31,33 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.net.MalformedURLException;
-import java.net.URL;
 
 
 public class DeviceActivity extends ActionBarActivity implements CompoundButton.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener {
     //////////////////////////////////////////////////////////////////////////////////
-    // Main Activity for OHAPClient13.java
+    // Device Activity for OHAPClient13 application
     //////////////////////////////////////////////////////////////////////////////////
 
     // Log tag
-    private static final String TAG = "DeviceActivity";
+    private final String TAG = this.getClass().getSimpleName();
+
+    // Intent extras
+    private final static String CENTRAL_UNIT_URL = "fi.oulu.tol.esde_2016_013.ohapclient13.CENTRAL_UNIT_URL";
+    private final static String DEVICE_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.DEVICE_ID";
 
     // Widgets
     private TextView textViewContainerName = null;
     private TextView textViewDeviceName = null;
     private TextView textViewDeviceDesc = null;
     private SeekBar seekBar = null;
+    private TextView textViewSeekBar = null;
     private Switch switch1 = null;
-    private TextView textViewSwitchValue = null;
-    private TextView textViewSeekBarValue = null;
+    private TextView textViewSwitch = null;
 
-    // OHAP applications
-    CentralUnit centralUnit = null;
-    Device dummyDevice = null;
-
-    // Global Variables
-    private Device.Type activeDeviceType = null;
-    private Device.ValueType activeDeviceValueType = null;
-    private String activeDeviceName = "";
-
+    // singleton central unit container
+    private static CentralUnit centralUnit = null;
+    // active device displayed on the UI
+    private Device activeDevice = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,85 +70,116 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         textViewContainerName = (TextView)(findViewById(R.id.textViewContainerName));
         textViewDeviceName = (TextView)(findViewById(R.id.textViewDeviceName));
         textViewDeviceDesc = (TextView)(findViewById(R.id.textViewDeviceDesc));
-        textViewSeekBarValue = (TextView)(findViewById(R.id.textViewSeekBar)); // displays dec value
-        textViewSwitchValue = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
+        textViewSeekBar = (TextView)(findViewById(R.id.textViewSeekBar)); // displays dec value
+        textViewSwitch = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
 
         // Getting reference for seekbar (for changing decimal value)
         seekBar = (SeekBar)(findViewById(R.id.seekBar));
         seekBar.setOnSeekBarChangeListener(this); // start listening for seekbar user input
 
-            // Getting reference for switch object (for changing binary value)
+        // Getting reference for switch object (for changing binary value)
         switch1 = (Switch)(findViewById(R.id.switch1));
         switch1.setOnCheckedChangeListener(this); // start listening for switch bar user input
 
+        // get url from intent
+        String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
+        final String central_unit_url = newUrl != null ? newUrl : getResources().getString(R.string.server_url);
+        Log.i(TAG, "onCreate() New url received from intent: " + central_unit_url);
 
-        //////////////////////////////////////////////////////////////////////////////////
-        // Startup OHAP Server Application and instantiate devices
-        //////////////////////////////////////////////////////////////////////////////////
-
-        // Instantiating OHAP server
         try {
-            // Java enforces try-catch statement for MalformedURLException
-            centralUnit = new CentralUnitConnection(new URL("http://ohap.opimobi.com:8080/"));
+            // Instantiating CentralUnit placeholder for all containers
+            centralUnit = CentralUnitConnection.getInstance(); // get instance of singleton
+
+            Log.i(TAG, "onCreate() CentralUnit: " + centralUnit
+                    + " name: " + centralUnit.getName()
+                    + " container id: " + centralUnit.getId()
+                    + " item count: " + centralUnit.getItemCount()
+                    + " listening state: " + centralUnit.isListening());
         } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-        centralUnit.setName(getResources().getString(R.string.container_name));
-
-        // Initializing attributes for the dummy device
-        activeDeviceName = getResources().getString(R.string.device_name);
-        activeDeviceType = Device.Type.ACTUATOR;
-        activeDeviceValueType = Device.ValueType.DECIMAL;
-
-        // Instantiating dummy device
-        dummyDevice = new Device(centralUnit, 1, activeDeviceType, activeDeviceValueType);
-
-        // Setting attributes for dummy device
-        dummyDevice.setName(activeDeviceName);
-        dummyDevice.setDescription(getResources().getString(R.string.device_desc));
-
-        // Change App title to show active device type
-        if (activeDeviceType == Device.Type.ACTUATOR) {
-            setTitle("Actuator");
-        }
-        else if (activeDeviceType == Device.Type.SENSOR) {
-            setTitle("Sensor");
-        } else {
-            Log.wtf(TAG, "Unable to set App title: Invalid device type (" + activeDeviceType + ")");
+            Log.e(TAG, "onCreate() Unable to instantiate CentralUnit: " + e.getMessage());
         }
 
-        // Change the visibility of bars according to active device value type: Switch is visible
-        // with binary and seekbar with decimal value type
-        if (activeDeviceValueType == Device.ValueType.BINARY) {
-            seekBar.setVisibility(View.GONE);
-            textViewSeekBarValue.setVisibility(View.GONE);
-        } else if (activeDeviceValueType == Device.ValueType.DECIMAL ) {
-            switch1.setVisibility(View.GONE);
-            textViewSwitchValue.setVisibility(View.GONE);
-        } else {
-            Log.wtf(TAG, "Unable to set device visibility: Invalid device value type (" + activeDeviceValueType + ")");
+        // get device id from intent
+        int newId = getIntent().getIntExtra(DEVICE_ID, -1);
+        Log.i(TAG, "onCreate() Device id received from intent: " + newId);
+        if (newId == -1) {
+            Log.e(TAG, "onCreate() Invalid DEVICE_ID -> set DEVICE_ID = 1: " + newId);
         }
+        final int device_id = newId != -1 ? newId: 1;
 
-        // set values on the TextView objects to the device values
-        // TODO The top TextView should show the container hierarchy (not documented -> ask teacher)
-        textViewContainerName.setText(centralUnit.getName());
-        textViewDeviceName.setText(dummyDevice.getName());
-        textViewDeviceDesc.setText(dummyDevice.getDescription());
+
+        // Casting device id
+        if (centralUnit != null)
+            activeDevice = (Device)centralUnit.getItemById(device_id);
+        else
+            Log.e(TAG, "onCreate() Central device == null!");
+
+        if (activeDevice != null) {
+            // Log device information
+            Log.i(TAG, "onCreate() Device: " + activeDevice
+                    + " name: " + activeDevice.getName()
+                    + " device id: " + activeDevice.getId()
+                    + " type: " + activeDevice.getType()
+                    + " valueType: " + activeDevice.getValueType());
+
+            // Changing App title to show active device type
+            if (activeDevice.getType() == Device.Type.ACTUATOR) {
+                setTitle("ACTUATOR");
+            } else if (activeDevice.getType() == Device.Type.SENSOR) {
+                setTitle("SENSOR");
+            } else {
+                setTitle("-");
+                Log.wtf(TAG, "onCreate() Unable to set App title: Invalid device type (" + activeDevice.getType() + ")");
+            }
+
+            // Visibility of bars is changed according to the active device value type:
+            // Switch is visible with binary and seekbar only with decimal values
+            if (activeDevice.getValueType() == Device.ValueType.BINARY) {
+                seekBar.setVisibility( View.GONE);
+                textViewSeekBar.setVisibility( View.GONE);
+                switch1.setChecked( activeDevice.getBinaryValue() );
+            } else if (activeDevice.getValueType() == Device.ValueType.DECIMAL) {
+                switch1.setVisibility( View.GONE);
+                textViewSwitch.setVisibility( View.GONE);
+                seekBar.setProgress( (int)activeDevice.getDecimalValue() );
+            } else {
+                Log.wtf(TAG, "onCreate() Unable to set device visibility: Invalid device value type (" + activeDevice.getValueType() + ")");
+            }
+
+            // Setting values on the TextView objects to the device values
+            // TODO The top TextView should show the container hierarchy (will get from the server?)
+            textViewContainerName.setText(getResources().getString(R.string.container_hierarchy));
+            textViewDeviceName.setText(activeDevice.getName());
+            textViewDeviceDesc.setText(activeDevice.getDescription());
+        }
+        else {
+            Log.e(TAG, "onCreate() Active device == null! Unable to set View attributes! Device id: " + newId + ", container id: " + centralUnit.getId());
+        }
     }
 
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
         // Implementation for the method that is called whenever the binary Switch value has changed
-        dummyDevice.setBinaryValue(isChecked);
-        textViewSwitchValue.setText(Boolean.toString(dummyDevice.getBinaryValue())); // display device value
+        activeDevice.setBinaryValue(isChecked);
+        try {
+            textViewSwitch.setText( "Device value: " + Boolean.toString(activeDevice.getBinaryValue())); // display device value
+        } catch (Exception e) {
+            Log.wtf(TAG, "onCheckedChanged() Unable to set text on switch: " + e.getMessage() );
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         // Implementation for the method that is called whenever the decimal seekbar value has changed
-        dummyDevice.setDecimalValue(progress);
-        textViewSeekBarValue.setText(Double.toString(dummyDevice.getDecimalValue())); // display device value
+        activeDevice.setDecimalValue(progress);
+        try {
+            textViewSeekBar.setText( "Device value: " + Double.toString(activeDevice.getDecimalValue())); // display device value
+        } catch (Exception e) {
+            Log.wtf(TAG, "onProgressChanged() Unable to set text on seekBar: " + e.getMessage() );
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -161,7 +191,7 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_device, menu);
+//        getMenuInflater().inflate(R.menu.menu_device, menu);
         return true;
     }
 
@@ -174,18 +204,16 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.device_settings) {
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
+    public void onDestroy() {
+        Log.i(TAG, "onDestroy() Activity has been terminated.");
+        super.onDestroy();
+    }
+
 }
-
-
-
-/**
- * Future ideas
-  * - Create auto-testers for widgets
- */

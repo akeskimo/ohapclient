@@ -102,6 +102,18 @@ public abstract class CentralUnit extends Container {
         return url;
     }
 
+
+    /**
+     * Sets the URL of the central unit.
+     *
+     * @param url The URL address of the container unit
+     */
+    public void setURL(URL url) {
+        this.url = url;
+    }
+
+
+
     /**
      * Notifies the central unit that the specified container has started or stopped listening.
      * When a client is listening a container, the server sends updates when items are added
