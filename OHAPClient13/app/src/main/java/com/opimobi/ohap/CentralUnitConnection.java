@@ -1,7 +1,9 @@
 package com.opimobi.ohap;
 
 /**
- * Implementation of central unit connection in an OHAP application.
+ * Implementation of central unit connection in an OHAP application. This class is implemented as a
+ * Singleton and its instance carries all the Device and Container object information that can be
+ * used by all applications that create instance of it.
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version, implemented superclass abstract methods
@@ -20,7 +22,7 @@ import android.view.KeyCharacterMap;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-//import java.util.Random;
+import java.util.Random;
 
 
 public class CentralUnitConnection extends CentralUnit {
@@ -32,7 +34,7 @@ public class CentralUnitConnection extends CentralUnit {
     private static int nListeners; // number of containers
 
     // dummy devices
-    private static final int maxDummyNumber = 10; // number of dummy devices to be created (MAX 20!)
+    private static final int maxDummyNumber = 20; // number of dummy devices to be created (MAX 20!)
     private static int nDummy; // dummy counter
     private Device[] dummyDevices; // dummy object array
 
@@ -140,13 +142,10 @@ public class CentralUnitConnection extends CentralUnit {
         Device newDevice;
 
         // create random numbers
-//        Random rand = new Random();
-//        int randNum = rand.nextInt(2)+1; // random number [1,4]
+        Random rand = new Random();
+        int randNum = rand.nextInt(2)+1; // random number [1,4]
 
-        // hard coded dummy types
-        int [] dummyTypes = {1,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,1,2,1,2};
-
-        if (dummyTypes[nDummy-1] == 1) {
+        if (randNum == 1) {
             newDevice = new Device(container, nDummy, Device.Type.ACTUATOR, Device.ValueType.BINARY);
             newDevice.setName("Ceiling Lamp");
         }
@@ -154,6 +153,20 @@ public class CentralUnitConnection extends CentralUnit {
             newDevice = new Device(container, nDummy, Device.Type.SENSOR, Device.ValueType.DECIMAL);
             newDevice.setName("Temperature Sensor");
         }
+
+//        // hard coded dummy types
+//        int [] dummyTypes = {1,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,1,2,1,2};
+//
+//        if (dummyTypes[nDummy-1] == 1) {
+//            newDevice = new Device(container, nDummy, Device.Type.ACTUATOR, Device.ValueType.BINARY);
+//            newDevice.setName("Ceiling Lamp");
+//        }
+//        else {
+//            newDevice = new Device(container, nDummy, Device.Type.SENSOR, Device.ValueType.DECIMAL);
+//            newDevice.setName("Temperature Sensor");
+//        }
+
+        // Enter description that will be shown on the DeviceActivity
         // long desc
 //        newDevice.setDescription( "(ID" + nDummy + "," + newDevice.getType() + "," + newDevice.getValueType() + ")" );
         // short desc

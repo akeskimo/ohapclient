@@ -1,16 +1,13 @@
 <resources>
 
-    <!-- General -->
-    <string name="app_name">OHAPClient13</string>
-
     <!-- Configuration -->
     <string name="server_url">http://ohap.opimobi.com:8080/</string>
 
-    <!-- Menu items -->
-    <string name="device_settings">Device Settings</string>
-    <string name="container_settings">Preferences</string>
+    <!-- Container activity -->
+    <string name="title_container_activity">OHAPClient13</string>
 
-    <!-- Widgets -->
+    <!-- Device activity -->
+    <string name="title_device_activity">Device</string>
     <string name="device_name">default</string>
     <string name="device_desc">default</string>
     <string name="centralunit_name">OHAP Test Server</string>
@@ -18,14 +15,29 @@
     <string name="switch_text">Change binary value</string>
     <string name="seekbar_text">Change decimal value</string>
 
-
     <!-- Preferences activity -->
+    <string name="title_preference_activity">Settings</string>
+    <string name="text_current_server_header">Current server address:</string>
+    <string name="connect_button_text">Connect</string>
+    <string name="text_auto_connect_header">Automatically connect to server:</string>
+    <string name="auto_connect_checkbox_text">Auto-connect</string>
+    <string name="text_url_port_header">Enter new URL address and port</string>
+    <string name="text_url_prefix">http://</string>
     <string name="url_hint">eg ohap.obimobi.com</string>
     <string name="port_hint">eg 8000</string>
-    <string name="title_activity_preference">User Preferences</string>
-    <string name="text_url_prefix">http://</string>
-    <string name="connect_button_text">Connect</string>
-    <string name="auto_connect_checkbox_text">Auto-connect</string>
-    <string name="save_button_text">Save</string>
+    <string name="save_button_text">Set</string>
+
+    <!-- Helper activity -->
+    <string name="title_activity_helper">About OHAPClient13</string>
+    <string name="text_about">
+        \nThis application was developed as course work for 815303A Embedded Software Development
+        Environments -course during Academic year 2016 in University of Oulu\n\n\n
+        Authors: \n
+        Aapo Keskimolo (aapokesk@gmail.com) \n
+        Mikko Yliniemi (mikkoyli@paju.oulu.fi) </string>
+
+    <!-- Menu bar -->
+    <string name="menu_settings">Preferences</string>
+    <string name="menu_help">Help</string>
 
 </resources>

@@ -24,5 +24,13 @@
     <dimen name="button_left_margin">0dp</dimen>
     <dimen name="button_right_margin">0dp</dimen>
 
-    <!--<dimen name="edit_text_width">50dp</dimen>-->
+
+    <!-- Menu bar -->
+    <dimen name="menu_ic_width">32dp</dimen>
+    <dimen name="menu_ic_height">32dp</dimen>
+    <dimen name="menu_ic_marginLeft">0dp</dimen>
+    <dimen name="menu_ic_marginRight">0dp</dimen>
+    <dimen name="menu_ic_marginTop">0dp</dimen>
+    <dimen name="menu_ic_marginBottom">0dp</dimen>
+
 </resources>

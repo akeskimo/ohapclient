@@ -2,8 +2,8 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 /**
  * Description:
- * List Adapter for ContainerActivity. The List adapter will parse the items in the container and
- * display on a ListView. Documentation </http://developer.android.com/guide/topics/ui/layout/listview.html>
+ * List Adapter for ContainerActivity. The List adapter has an item container and forwards the data
+ * to ListView. Documentation </http://developer.android.com/guide/topics/ui/layout/listview.html>
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version
@@ -30,8 +30,10 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
     // Log tag
     private final String TAG = this.getClass().getSimpleName();
 
+    // Container object that will store the item information displayed on ListView
     private Container container;
 
+    // Constructor of Container object takes Container object as a parameter
     ContainerListAdapter(Container container) {
         if (container != null)
             this.container = container;
@@ -39,6 +41,8 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
             throw new NullPointerException("Container object is null!");
     }
 
+    // This ViewHolder class contains all widgets that will be used to display row information
+    // on ListView. Using existing widgets (=recycling), is much faster than creating new objects
     private static class ViewHolder {
         public TextView rowTextView;
         public ImageView imgView;
@@ -89,7 +93,7 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
         if (convertView == null) {
             Context context = parent.getContext();
             LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = inflater.inflate(R.layout.row_item, parent, false);
+            convertView = inflater.inflate(R.layout.listview_row, parent, false);
 
             viewHolder = new ViewHolder();
             viewHolder.rowTextView = (TextView)convertView.findViewById(R.id.rowTextView);
@@ -98,18 +102,17 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
         }
         else {
             viewHolder = (ViewHolder) convertView.getTag();
-            Log.d(TAG, "getView() Existing View object found.");
+//            Log.d(TAG, "getView() No existing ViewHolder: Getting new from ConvertView wrapper");
         }
 
         String text = "";
 
         try {
-            // 1. get item in the selected position and cast it to device object
+            // 1. Get item in the selected position and cast it to device object
             Device device = (Device)container.getItemByIndex(position);
-            // 2. get information and display it on the screen
+            // 2. Get item name
             text = device.getName();
-
-            // Set row icon to match the device type
+            // 3. Set row icon to match the device type
             if (device.getType() == Device.Type.ACTUATOR)
                 viewHolder.imgView.setImageResource(R.drawable.ic_lamp);
             else if (device.getType() == Device.Type.SENSOR)
@@ -124,6 +127,7 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
 
 
         try {
+            // 4. Set text on row
             viewHolder.rowTextView.setText( text );
 
         } catch (Exception e) {

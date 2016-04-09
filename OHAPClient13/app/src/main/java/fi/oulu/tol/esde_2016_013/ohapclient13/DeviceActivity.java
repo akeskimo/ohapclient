@@ -26,6 +26,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.CompoundButton;
+import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.Switch;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -33,7 +35,7 @@ import android.widget.TextView;
 import java.net.MalformedURLException;
 
 
-public class DeviceActivity extends ActionBarActivity implements CompoundButton.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener {
+public class DeviceActivity extends ActionBarActivity {
     //////////////////////////////////////////////////////////////////////////////////
     // Device Activity for OHAPClient13 application
     //////////////////////////////////////////////////////////////////////////////////
@@ -66,25 +68,54 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
 
+
         // Getting references for Text View Widgets
         textViewContainerName = (TextView)(findViewById(R.id.textViewContainerName));
         textViewDeviceName = (TextView)(findViewById(R.id.textViewDeviceName));
         textViewDeviceDesc = (TextView)(findViewById(R.id.textViewDeviceDesc));
         textViewSeekBar = (TextView)(findViewById(R.id.textViewSeekBar)); // displays dec value
         textViewSwitch = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
-
-        // Getting reference for seekbar (for changing decimal value)
         seekBar = (SeekBar)(findViewById(R.id.seekBar));
-        seekBar.setOnSeekBarChangeListener(this); // start listening for seekbar user input
-
-        // Getting reference for switch object (for changing binary value)
         switch1 = (Switch)(findViewById(R.id.switch1));
-        switch1.setOnCheckedChangeListener(this); // start listening for switch bar user input
 
-        // get url from intent
+
+        // Implementing listener for seekbar for changing decimal value of the Device
+        seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+           @Override
+           public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+               try {
+                   activeDevice.setDecimalValue(progress);
+                   textViewSeekBar.setText( "Device value: " + Double.toString(activeDevice.getDecimalValue())); // display device value
+               } catch (Exception e) {
+                   Log.wtf(TAG, "onProgressChanged() Unable to set values: " + e.getMessage() );
+                   e.printStackTrace();
+               }
+           }
+
+           @Override
+           public void onStartTrackingTouch(SeekBar seekBar) { }
+
+           @Override
+           public void onStopTrackingTouch(SeekBar seekBar) { }
+        });
+
+
+        // Implementing listener for switch for changing binary value of the Device
+        switch1.setOnCheckedChangeListener( new OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+            }
+
+        });
+
+
+        // Get URL from the parent intent (ContainerActivity)
         String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
         final String central_unit_url = newUrl != null ? newUrl : getResources().getString(R.string.server_url);
-        Log.i(TAG, "onCreate() New url received from intent: " + central_unit_url);
+        Log.i(TAG, "onCreate() New CENTRAL_UNIT_URL received from intent: " + central_unit_url);
 
         try {
             // Instantiating CentralUnit placeholder for all containers
@@ -95,26 +126,36 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
                     + " container id: " + centralUnit.getId()
                     + " item count: " + centralUnit.getItemCount()
                     + " listening state: " + centralUnit.isListening());
+
         } catch (MalformedURLException e) {
             Log.e(TAG, "onCreate() Unable to instantiate CentralUnit: " + e.getMessage());
+
+        } catch (Exception e) {
+            Log.e(TAG, "onCreate() Unhandled error occurred: " + e.getMessage());
         }
 
-        // get device id from intent
-        int newId = getIntent().getIntExtra(DEVICE_ID, -1);
-        Log.i(TAG, "onCreate() Device id received from intent: " + newId);
+        // Get Device id from the parent intent (ContainerActivity)
+        // Note: Item index is the index corresponding to the row user has clicked on the ListView
+        // of ContainerActivity
+        int newId = getIntent().getIntExtra(DEVICE_ID, -1); // if id not found, -1 is returned
+        Log.i(TAG, "onCreate() New DEVICE_ID received from intent: " + newId);
         if (newId == -1) {
-            Log.e(TAG, "onCreate() Invalid DEVICE_ID -> set DEVICE_ID = 1: " + newId);
+            Log.e(TAG, "onCreate() No device id found. Forcing active device_id to 1 (single device displayed)");
         }
         final int device_id = newId != -1 ? newId: 1;
 
 
-        // Casting device id
+        // If CentralUnit is instantiated, get the Device from CentralUnit
         if (centralUnit != null)
+            // get device id
             activeDevice = (Device)centralUnit.getItemById(device_id);
         else
             Log.e(TAG, "onCreate() Central device == null!");
 
+
+        // If Device was returned by CentralUnit, log device info and update UI widgets
         if (activeDevice != null) {
+
             // Log device information
             Log.i(TAG, "onCreate() Device: " + activeDevice
                     + " name: " + activeDevice.getName()
@@ -122,7 +163,7 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
                     + " type: " + activeDevice.getType()
                     + " valueType: " + activeDevice.getValueType());
 
-            // Changing App title to show active device type
+            // Update header text on the action bar
             if (activeDevice.getType() == Device.Type.ACTUATOR) {
                 setTitle("ACTUATOR");
             } else if (activeDevice.getType() == Device.Type.SENSOR) {
@@ -132,13 +173,15 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
                 Log.wtf(TAG, "onCreate() Unable to set App title: Invalid device type (" + activeDevice.getType() + ")");
             }
 
+
             // Visibility of bars is changed according to the active device value type:
-            // Switch is visible with binary and seekbar only with decimal values
             if (activeDevice.getValueType() == Device.ValueType.BINARY) {
+                // Switch is visible when active device has binary value type, only
                 seekBar.setVisibility( View.GONE);
                 textViewSeekBar.setVisibility( View.GONE);
                 switch1.setChecked( activeDevice.getBinaryValue() );
             } else if (activeDevice.getValueType() == Device.ValueType.DECIMAL) {
+                // Seekbar is visible when active device has decimal value type, only
                 switch1.setVisibility( View.GONE);
                 textViewSwitch.setVisibility( View.GONE);
                 seekBar.setProgress( (int)activeDevice.getDecimalValue() );
@@ -152,63 +195,10 @@ public class DeviceActivity extends ActionBarActivity implements CompoundButton.
             textViewDeviceName.setText(activeDevice.getName());
             textViewDeviceDesc.setText(activeDevice.getDescription());
         }
+
         else {
             Log.e(TAG, "onCreate() Active device == null! Unable to set View attributes! Device id: " + newId + ", container id: " + centralUnit.getId());
         }
-    }
-
-
-    @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        // Implementation for the method that is called whenever the binary Switch value has changed
-        activeDevice.setBinaryValue(isChecked);
-        try {
-            textViewSwitch.setText( "Device value: " + Boolean.toString(activeDevice.getBinaryValue())); // display device value
-        } catch (Exception e) {
-            Log.wtf(TAG, "onCheckedChanged() Unable to set text on switch: " + e.getMessage() );
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        // Implementation for the method that is called whenever the decimal seekbar value has changed
-        activeDevice.setDecimalValue(progress);
-        try {
-            textViewSeekBar.setText( "Device value: " + Double.toString(activeDevice.getDecimalValue())); // display device value
-        } catch (Exception e) {
-            Log.wtf(TAG, "onProgressChanged() Unable to set text on seekBar: " + e.getMessage() );
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onStartTrackingTouch(SeekBar seekBar) {}
-
-    @Override
-    public void onStopTrackingTouch(SeekBar seekBar) {}
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-//        getMenuInflater().inflate(R.menu.menu_device, menu);
-        return true;
-    }
-
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.device_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     public void onDestroy() {

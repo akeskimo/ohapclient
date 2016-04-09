@@ -59,8 +59,10 @@ public class ContainerActivity extends ActionBarActivity {
         loadPreferences();
 
         try {
-            // Instantiating CentralUnit placeholder for all containers
+        // Instantiating CentralUnit placeholder
             centralUnit = CentralUnitConnection.getInstance(); // get instance of singleton
+
+            // Set name
             centralUnit.setName(getResources().getString(R.string.centralunit_name) );
 
             // Log container information
@@ -70,24 +72,28 @@ public class ContainerActivity extends ActionBarActivity {
                     + " item count: " + centralUnit.getItemCount()
                     + " listening state: " + centralUnit.isListening());
 
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "onCreate() URL is invalid: " + e.getMessage());
+        }
+
+        try {
+            // Create ListAdapter pass it to ListView
             ListView listView = (ListView) findViewById(R.id.listView);
             listView.setAdapter(new ContainerListAdapter(centralUnit));
 
             listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Toast.makeText(ContainerActivity.this, "Device " + (position+1) + " selected", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ContainerActivity.this, "Device " + (position + 1) + " selected", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(ContainerActivity.this, DeviceActivity.class);
-                    intent.putExtra(CENTRAL_UNIT_URL, getResources().getString(R.string.server_url) ); // pass url to intent
-                    intent.putExtra(DEVICE_ID, position+1); // pass id to intent
+                    intent.putExtra(CENTRAL_UNIT_URL, getResources().getString(R.string.server_url)); // pass url to intent
+                    intent.putExtra(DEVICE_ID, position + 1); // pass id to intent
                     startActivity(intent);
                 }
             });
-        } catch (MalformedURLException e) {
-            Log.e(TAG, "onCreate() URL is invalid: " + e.getMessage() );
+
         } catch (Exception e) {
-            Log.e(TAG, "onCreate() Unknown error occurred: " + e.getMessage());
-            e.getStackTrace();
+            Log.e(TAG, "onCreate() Unable to generate ListView and start activity: " + e.getMessage());
         }
     }
 
@@ -105,17 +111,24 @@ public class ContainerActivity extends ActionBarActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+        // Action menu bar items are handled here
+
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.container_settings) {
+        if (id == R.id.menu_settings) {
+            // start preference activity
             Intent intent = new Intent(ContainerActivity.this, PreferenceActivity.class);
             startActivity(intent);
-//            intent.getStringExtra(DEFAULT_URL); // pass url to intent
-//            intent.getBooleanExtra(DEFAULT_AUTO_CONNECT, true); // pass url to intent
+        }
+
+        if (id == R.id.menu_container) {
+            // Already in the activity, do nothing
+        }
+
+        if (id == R.id.menu_help) {
+            // start helper activity
+            Intent intent = new Intent(ContainerActivity.this, HelperActivity.class);
+            startActivity(intent);
         }
 
         return super.onOptionsItemSelected(item);
