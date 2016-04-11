@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <CheckBoxPreference
+        android:key="@string/pref_autoconnect_key"
+        android:title="@string/pref_autoconnect_title"
+        android:summary="@string/pref_autoconnect_summary"
+        android:defaultValue="true" />
+
+    <EditTextPreference
+        android:id="@+id/editTextPreferenceUrl"
+        android:key="@string/pref_url_key"
+        android:title="@string/pref_url_title"
+        android:summary=""
+        android:defaultValue="" />
+
+    <EditTextPreference
+        android:key="@string/pref_port_key"
+        android:title="@string/pref_port_title"
+        android:summary=""
+        android:defaultValue="" />
+
+</PreferenceScreen>

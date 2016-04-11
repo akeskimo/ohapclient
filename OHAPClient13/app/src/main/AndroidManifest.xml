@@ -20,17 +20,17 @@
             android:name=".DeviceActivity"
             android:label="@string/title_device_activity"
             android:parentActivityName=".ContainerActivity">
-        <meta-data
-            android:name="android.support.PARENT_ACTIVITY"
-            android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
         </activity>
         <activity
-            android:name=".PreferenceActivity"
+            android:name=".PreferencesActivity"
             android:label="@string/title_preference_activity"
             android:parentActivityName=".ContainerActivity">
-        <meta-data
-            android:name="android.support.PARENT_ACTIVITY"
-            android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
         </activity>
         <activity
             android:name=".HelperActivity"

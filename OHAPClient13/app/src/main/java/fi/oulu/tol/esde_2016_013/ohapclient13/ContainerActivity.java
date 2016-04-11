@@ -3,7 +3,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 /**
  * Description:
  * Container Activity for an OHAP client application for monitoring and actuating house devices via
- * remote control Android application. This class acts as main entry point to OHAPClient13.
+ * remote control Android application. This activity is the main entry point for OHAPClient13.
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version
@@ -13,7 +13,10 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  */
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -28,15 +31,13 @@ import com.opimobi.ohap.CentralUnitConnection;
 import com.opimobi.ohap.Container;
 
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 
 public class ContainerActivity extends ActionBarActivity {
 
-    // TODO Add exception handling to all methods that access objects (prio HIGH)
-    // TODO check the stability of the application by running the emulator (prio HIGH)
-    // TODO action bar in container activity should have 3 icons: Container|Device|Settings (prio low)
-
+    // TODO Add recovery scenario to all exceptions where possible (prio HIGH)
 
     // Log tag
     private final String TAG = this.getClass().getSimpleName();
@@ -44,25 +45,23 @@ public class ContainerActivity extends ActionBarActivity {
     // Intent extras
     private final static String CENTRAL_UNIT_URL = "fi.oulu.tol.esde_2016_013.ohapclient13.CENTRAL_UNIT_URL";
     private final static String DEVICE_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.DEVICE_ID";
-//    private final static String DEFAULT_URL = "fi.oulu.tol.esde_2016_013.ohapclient13.DEFAULT_URL";
-//    private final static String DEFAULT_AUTO_CONNECT = "fi.oulu.tol.esde_2016_013.ohapclient13.DEFAULT_AUTO_CONNECT";
 
     // singleton central unit container
     private static CentralUnit centralUnit = null;
+
+    // central unit url
+    URL url = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_container);
 
-        // loads preferences from a file
-        loadPreferences();
-
         try {
         // Instantiating CentralUnit placeholder
             centralUnit = CentralUnitConnection.getInstance(); // get instance of singleton
 
-            // Set name
+            // Set container name
             centralUnit.setName(getResources().getString(R.string.centralunit_name) );
 
             // Log container information
@@ -76,8 +75,11 @@ public class ContainerActivity extends ActionBarActivity {
             Log.e(TAG, "onCreate() URL is invalid: " + e.getMessage());
         }
 
+        // loads preferences from a file
+        loadPreferences();
+
         try {
-            // Create ListAdapter pass it to ListView
+            // Create ListAdapter and set it to ListView
             ListView listView = (ListView) findViewById(R.id.listView);
             listView.setAdapter(new ContainerListAdapter(centralUnit));
 
@@ -97,9 +99,28 @@ public class ContainerActivity extends ActionBarActivity {
         }
     }
 
-    private boolean loadPreferences() {
-        Log.d(TAG, "loadPreferences() Method not implemented");
-        return true;
+    private void loadPreferences() {
+        // Loads Default Shared Preferences
+
+        SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(this);
+        String port_key, url_key, port_value, url_value;
+
+        // load port settings
+        port_key = getString(R.string.pref_port_key);
+        port_value = shared.getString( port_key, "");
+        Log.i(TAG, "loadPreferences() Preference loaded, key = " + port_key + ", value = " + port_value );
+
+        // load url settings
+        url_key = getString(R.string.pref_url_key);
+        url_value = shared.getString( url_key, "");
+        Log.i(TAG, "loadPreferences() Preference loaded, key = " + url_key + ", value = " + url_value );
+
+        String address = url_value + ":" + port_value + "/";
+        try {
+            centralUnit.setURL(new URL(address));
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "loadPreferences() Unable to set CentralUnit URL address \"" + address + ", reason: " + e.getMessage());
+        }
     }
 
     @Override
@@ -117,12 +138,13 @@ public class ContainerActivity extends ActionBarActivity {
 
         if (id == R.id.menu_settings) {
             // start preference activity
-            Intent intent = new Intent(ContainerActivity.this, PreferenceActivity.class);
+            Intent intent = new Intent(ContainerActivity.this, PreferencesActivity.class);
             startActivity(intent);
         }
 
         if (id == R.id.menu_container) {
-            // Already in the activity, do nothing
+            // Current activity, do nothing
+            Toast.makeText( this, "In activity already", Toast.LENGTH_SHORT).show();
         }
 
         if (id == R.id.menu_help) {

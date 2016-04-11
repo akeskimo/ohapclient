@@ -68,7 +68,6 @@ public class DeviceActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
 
-
         // Getting references for Text View Widgets
         textViewContainerName = (TextView)(findViewById(R.id.textViewContainerName));
         textViewDeviceName = (TextView)(findViewById(R.id.textViewDeviceName));
@@ -88,8 +87,7 @@ public class DeviceActivity extends ActionBarActivity {
                    activeDevice.setDecimalValue(progress);
                    textViewSeekBar.setText( "Device value: " + Double.toString(activeDevice.getDecimalValue())); // display device value
                } catch (Exception e) {
-                   Log.wtf(TAG, "onProgressChanged() Unable to set values: " + e.getMessage() );
-                   e.printStackTrace();
+                   Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
                }
            }
 
@@ -106,7 +104,12 @@ public class DeviceActivity extends ActionBarActivity {
 
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-
+                try {
+                    activeDevice.setBinaryValue(isChecked);
+                    textViewSeekBar.setText( "Device value: " + Boolean.toString(activeDevice.getBinaryValue())); // display device value
+                } catch (Exception e) {
+                    Log.e(TAG, "onProgressChanged() Unable to device value: " + e.getMessage() );
+                }
             }
 
         });
@@ -190,10 +193,9 @@ public class DeviceActivity extends ActionBarActivity {
             }
 
             // Setting values on the TextView objects to the device values
-            // TODO The top TextView should show the container hierarchy (will get from the server?)
-            textViewContainerName.setText(getResources().getString(R.string.container_hierarchy));
-            textViewDeviceName.setText(activeDevice.getName());
-            textViewDeviceDesc.setText(activeDevice.getDescription());
+            textViewContainerName.setText( centralUnit.getName());
+            textViewDeviceName.setText( activeDevice.getName());
+            textViewDeviceDesc.setText( activeDevice.getDescription());
         }
 
         else {
