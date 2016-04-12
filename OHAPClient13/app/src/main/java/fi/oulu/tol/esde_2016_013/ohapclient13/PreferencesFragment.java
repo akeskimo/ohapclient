@@ -105,7 +105,7 @@ public class PreferencesFragment extends PreferenceFragment {
 
                     Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + newValue );
 
-                    if ( validateUrl(value) ) {
+                    if ( validatePort(value) ) {
                         preference.setSummary( value);
                         return true;
                     }
