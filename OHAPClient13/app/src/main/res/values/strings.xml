@@ -29,9 +29,11 @@
     <string name="pref_url_key">pref_url</string>
     <string name="pref_url_title">Server</string>
     <string name="pref_url_summary">Default</string>
+    <string name="pref_url_default">http://com.opimobi.ohap</string>
     <string name="pref_port_key">pref_port</string>
     <string name="pref_port_title">Port</string>
     <string name="pref_port_summary">Default</string>
+    <string name="pref_port_default">8080</string>
 
     <!-- Helper activity -->
     <string name="title_activity_helper">About OHAPClient13</string>

@@ -89,12 +89,12 @@ public class ContainerActivity extends ActionBarActivity {
 
         // load port settings
         port_key = getString(R.string.pref_port_key);
-        port_value = shared.getString( port_key, "");
+        port_value = shared.getString( port_key, getString(R.string.pref_port_default));
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + port_key + ", value = " + port_value);
 
         // load url settings
         url_key = getString(R.string.pref_url_key);
-        url_value = shared.getString( url_key, "");
+        url_value = shared.getString( url_key, getString(R.string.pref_url_default));
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + url_key + ", value = " + url_value);
 
         String address = url_value + ":" + port_value + "/";
