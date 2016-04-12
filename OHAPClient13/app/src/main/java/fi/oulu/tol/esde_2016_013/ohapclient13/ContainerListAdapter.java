@@ -7,6 +7,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version
+ * v1.1     Aapo Keskimolo      ListView displays value of the device
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
  * @version 1.0
@@ -14,6 +15,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 import android.content.Context;
 import android.database.DataSetObserver;
+import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -46,6 +48,10 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
     private static class ViewHolder {
         public TextView rowTextView;
         public ImageView imgView;
+        public TextView rowTextViewValue;
+        public String colorDeviceValueOn = "#ffffff";
+        public String colorDeviceValueOff = "#b0b0b0";
+
     }
 
     @Override
@@ -89,6 +95,8 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
+        // View inflater service
+        // uses Viewholder class to store the currently visible views that are recycled
         ViewHolder viewHolder;
         if (convertView == null) {
             Context context = parent.getContext();
@@ -98,11 +106,14 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
             viewHolder = new ViewHolder();
             viewHolder.rowTextView = (TextView)convertView.findViewById(R.id.rowTextView);
             viewHolder.imgView = (ImageView) convertView.findViewById(R.id.item_icon);
+            viewHolder.rowTextViewValue = (TextView) convertView.findViewById(R.id.rowTextViewValue);
+            viewHolder.colorDeviceValueOff = context.getString(R.string.color_device_value_on);
+            viewHolder.colorDeviceValueOn = context.getString(R.string.color_device_value_off);
             convertView.setTag(viewHolder);
         }
         else {
             viewHolder = (ViewHolder) convertView.getTag();
-//            Log.d(TAG, "getView() No existing ViewHolder: Getting new from ConvertView wrapper");
+//            Log.d(TAG, "getView() No existing ViewHolder: Getting new View from context");
         }
 
         String text = "";
@@ -113,12 +124,31 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
             // 2. Get item name
             text = device.getName();
             // 3. Set row icon to match the device type
-            if (device.getType() == Device.Type.ACTUATOR)
+            if (device.getType() == Device.Type.ACTUATOR) {
                 viewHolder.imgView.setImageResource(R.drawable.ic_lamp);
-            else if (device.getType() == Device.Type.SENSOR)
+                if (device.getBinaryValue()) {
+                    viewHolder.rowTextViewValue.setText("ON");
+                    viewHolder.rowTextViewValue.setTextColor( Color.CYAN);
+                }
+                else {
+                    viewHolder.rowTextViewValue.setText("OFF");
+                    viewHolder.rowTextViewValue.setTextColor( Color.GRAY );
+                }
+            }
+            else if (device.getType() == Device.Type.SENSOR) {
                 viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
-            else
+                if (device.getDecimalValue() != 0) {
+                    viewHolder.rowTextViewValue.setText(
+                            String.format("%1.0f %%", device.getDecimalValue() ));
+                    viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+                } else {
+                    viewHolder.rowTextViewValue.setText( "OFF" );
+                    viewHolder.rowTextViewValue.setTextColor( Color.GRAY);
+                }
+            }
+            else {
                 Log.wtf(TAG, "getView() No device type found!");
+            }
 
         } catch (Exception e) {
             Log.d(TAG, "getView() Unable to get device information "  + e. getMessage() );

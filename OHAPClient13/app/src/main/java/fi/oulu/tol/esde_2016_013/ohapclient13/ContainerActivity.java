@@ -7,6 +7,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version
+ * v1.1     Aapo Keskimolo      Display device value on ListView
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
  * @version 1.0
@@ -78,6 +79,37 @@ public class ContainerActivity extends ActionBarActivity {
         // loads preferences from a file
         loadPreferences();
 
+        // initializes list view
+        createListView();
+
+    }
+
+    private void loadPreferences() {
+        // Loads Default Shared Preferences
+
+        SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(this);
+        String port_key, url_key, port_value, url_value;
+
+        // load port settings
+        port_key = getString(R.string.pref_port_key);
+        port_value = shared.getString( port_key, "");
+        Log.i(TAG, "loadPreferences() Preference loaded, key = " + port_key + ", value = " + port_value);
+
+        // load url settings
+        url_key = getString(R.string.pref_url_key);
+        url_value = shared.getString( url_key, "");
+        Log.i(TAG, "loadPreferences() Preference loaded, key = " + url_key + ", value = " + url_value);
+
+        String address = url_value + ":" + port_value + "/";
+        try {
+            centralUnit.setURL(new URL(address));
+            Log.i(TAG, "loadPreferences() CentralUnit set with new URL: " + address);
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "loadPreferences() Unable to set CentralUnit URL address \"" + address + ", reason: " + e.getMessage());
+        }
+    }
+
+    private void createListView() {
         try {
             // Create ListAdapter and set it to ListView
             ListView listView = (ListView) findViewById(R.id.listView);
@@ -99,28 +131,10 @@ public class ContainerActivity extends ActionBarActivity {
         }
     }
 
-    private void loadPreferences() {
-        // Loads Default Shared Preferences
-
-        SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(this);
-        String port_key, url_key, port_value, url_value;
-
-        // load port settings
-        port_key = getString(R.string.pref_port_key);
-        port_value = shared.getString( port_key, "");
-        Log.i(TAG, "loadPreferences() Preference loaded, key = " + port_key + ", value = " + port_value );
-
-        // load url settings
-        url_key = getString(R.string.pref_url_key);
-        url_value = shared.getString( url_key, "");
-        Log.i(TAG, "loadPreferences() Preference loaded, key = " + url_key + ", value = " + url_value );
-
-        String address = url_value + ":" + port_value + "/";
-        try {
-            centralUnit.setURL(new URL(address));
-        } catch (MalformedURLException e) {
-            Log.e(TAG, "loadPreferences() Unable to set CentralUnit URL address \"" + address + ", reason: " + e.getMessage());
-        }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        createListView();
     }
 
     @Override
@@ -144,7 +158,7 @@ public class ContainerActivity extends ActionBarActivity {
 
         if (id == R.id.menu_container) {
             // Current activity, do nothing
-            Toast.makeText( this, "In activity already", Toast.LENGTH_SHORT).show();
+            Toast.makeText( this, getString(R.string.menu_click_toast), Toast.LENGTH_SHORT).show();
         }
 
         if (id == R.id.menu_help) {

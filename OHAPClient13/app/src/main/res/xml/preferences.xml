@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <PreferenceCategory
+        android:title="@string/pref_category_title_connection">
+
     <CheckBoxPreference
         android:key="@string/pref_autoconnect_key"
         android:title="@string/pref_autoconnect_title"
@@ -19,5 +22,7 @@
         android:title="@string/pref_port_title"
         android:summary=""
         android:defaultValue="" />
+
+    </PreferenceCategory>
 
 </PreferenceScreen>

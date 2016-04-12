@@ -2,8 +2,8 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 /**
  * Description:
- * Preference fragment that includes changing URL, Port and Auto-connect boolean value. The url and
- * port are validated before saving.
+ * Preference fragment that includes changing URL, Port and Auto-connect user preferences. The url
+ * and port are validated before saving.
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version
@@ -11,7 +11,6 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
  * @version 1.0
  */
-
 
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
@@ -52,8 +51,6 @@ public class PreferencesFragment extends PreferenceFragment {
         // fragment is attached to
         SharedPreferences defaultPreferences =
                 PreferenceManager.getDefaultSharedPreferences(this.getActivity());
-
-
 
         // get url from shared preferences and set it as summary
         Preference urlPref = findPreference(getString(R.string.pref_url_key));

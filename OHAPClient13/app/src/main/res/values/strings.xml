@@ -5,6 +5,11 @@
 
     <!-- Container activity -->
     <string name="title_container_activity">OHAPClient13</string>
+    <string name="menu_click_toast">Already in the Activity</string>
+
+    <!-- Container list adapter -->
+    <string name="color_device_value_on">#ffffff</string>
+    <string name="color_device_value_off">#d0d0d0</string>
 
     <!-- Device activity -->
     <string name="title_device_activity">Device</string>
@@ -16,6 +21,8 @@
     <string name="seekbar_text">Change decimal value</string>
 
     <!-- Preferences activity -->
+    <string name="title_preference_activity">Settings</string>
+    <string name="pref_category_title_connection">Connection settings</string>
     <string name="pref_autoconnect_key">pref_autoconnect</string>
     <string name="pref_autoconnect_title">Auto-connect</string>
     <string name="pref_autoconnect_summary">Automatically connects to the server</string>
@@ -26,23 +33,11 @@
     <string name="pref_port_title">Port</string>
     <string name="pref_port_summary">Default</string>
 
-    <string name="title_preference_activity">Settings</string>
-    <string name="text_current_server_header">Current server address:</string>
-    <string name="connect_button_text">Connect</string>
-    <string name="text_auto_connect_header">Automatically connect to server:</string>
-    <string name="auto_connect_checkbox_text">Auto-connect</string>
-    <string name="auto_connect_checkbox_summary">Connects automatically to the server</string>
-    <string name="text_url_port_header">Enter new URL address and port</string>
-    <string name="text_url_prefix">http://</string>
-    <string name="url_hint">eg ohap.obimobi.com</string>
-    <string name="port_hint">eg 8000</string>
-    <string name="save_button_text">Set</string>
-
     <!-- Helper activity -->
     <string name="title_activity_helper">About OHAPClient13</string>
     <string name="text_about">
-        \nThis application was developed as course work for 815303A Embedded Software Development
-        Environments -course during Academic year 2016 in University of Oulu\n\n\n
+        \nThis application has been developed as course work for 815303A Embedded Software Development
+        Environments -course during Academic year 2016 at the University of Oulu. \n\n\n
         Authors: \n
         Aapo Keskimolo (aapokesk@gmail.com) \n
         Mikko Yliniemi (mikkoyli@paju.oulu.fi) </string>

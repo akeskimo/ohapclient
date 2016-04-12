@@ -12,9 +12,10 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * v1.0     Aapo Keskimolo      Initial version with layout, OHAP server, 1 dummy device, widgets and listeners
  * v1.1     Aapo Keskimolo      Changed visibility of widgets, Added logging, Changed app title to device name and did some maintenance
  * v1.2     Aapo Keskimolo      Made DeviceActivity 2nd entry for app and removed dummy code
+ * v1.3     Aapo Keskimolo      Removed "device value" from switch/seekbar status bar
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.2
+ * @version 1.3
  */
 
 import com.opimobi.ohap.*;
@@ -85,7 +86,7 @@ public class DeviceActivity extends ActionBarActivity {
            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                try {
                    activeDevice.setDecimalValue(progress);
-                   textViewSeekBar.setText( "Device value: " + Double.toString(activeDevice.getDecimalValue())); // display device value
+                   textViewSeekBar.setText( String.format("%1.0f %%", activeDevice.getDecimalValue() )); // display device value
                } catch (Exception e) {
                    Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
                }
@@ -106,7 +107,7 @@ public class DeviceActivity extends ActionBarActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 try {
                     activeDevice.setBinaryValue(isChecked);
-                    textViewSeekBar.setText( "Device value: " + Boolean.toString(activeDevice.getBinaryValue())); // display device value
+                    textViewSwitch.setText( Boolean.toString(activeDevice.getBinaryValue() )); // display device value
                 } catch (Exception e) {
                     Log.e(TAG, "onProgressChanged() Unable to device value: " + e.getMessage() );
                 }

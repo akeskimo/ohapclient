@@ -51,32 +51,6 @@ public class CentralUnitConnection extends CentralUnit {
         return instance;
     }
 
-
-
-// Old code
-//    // constructing the class by using super class constructor
-//    public CentralUnitConnection(URL url) {
-//        super(url);
-//    }
-
-
-//    // Temporary constructor to simulate dummy devices
-//    public CentralUnitConnection(URL newUrl, Boolean createDummies) {
-//        super(newUrl);
-//
-//        if (createDummies) {
-//            // initialize dummy variables
-//            dummyDevices = new Device[maxDummyNumber];
-//
-//            // fill dummy array
-//            for (int i = 0; i < maxDummyNumber; i++) {
-//                dummyDevices[i] = getRandomDummyDevice(this);
-//            }
-//        } else
-//            Log.i(TAG, "CentralUnitConnection() No dummies generated.");
-//
-//    }
-
     @Override
     protected void listeningStateChanged(Container container, boolean listening) {
 
@@ -148,9 +122,11 @@ public class CentralUnitConnection extends CentralUnit {
         if (randNum == 1) {
             newDevice = new Device(container, nDummy, Device.Type.ACTUATOR, Device.ValueType.BINARY);
             newDevice.setName("Ceiling Lamp");
+            newDevice.setBinaryValue(false);
         }
         else {
             newDevice = new Device(container, nDummy, Device.Type.SENSOR, Device.ValueType.DECIMAL);
+            newDevice.setDecimalValue(0);
             newDevice.setName("Temperature Sensor");
         }
 
