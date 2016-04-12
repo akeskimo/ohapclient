@@ -59,6 +59,7 @@ public class DeviceActivity extends ActionBarActivity {
 
     // singleton central unit container
     private static CentralUnit centralUnit = null;
+
     // active device displayed on the UI
     private Device activeDevice = null;
 

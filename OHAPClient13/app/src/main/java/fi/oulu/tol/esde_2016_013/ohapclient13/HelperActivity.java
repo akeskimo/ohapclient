@@ -18,8 +18,10 @@ public class HelperActivity extends ActionBarActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_helper);
+
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 

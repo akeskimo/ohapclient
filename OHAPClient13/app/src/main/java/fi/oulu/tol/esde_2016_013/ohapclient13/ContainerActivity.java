@@ -10,12 +10,11 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * v1.1     Aapo Keskimolo      Display device value on ListView
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.0
+ * @version 1.1
  */
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
@@ -29,10 +28,8 @@ import android.widget.Toast;
 
 import com.opimobi.ohap.CentralUnit;
 import com.opimobi.ohap.CentralUnitConnection;
-import com.opimobi.ohap.Container;
 
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 
 

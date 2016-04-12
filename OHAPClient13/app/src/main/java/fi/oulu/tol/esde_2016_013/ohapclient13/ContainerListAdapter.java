@@ -35,7 +35,7 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
     // Container object that will store the item information displayed on ListView
     private Container container;
 
-    // Constructor of Container object takes Container object as a parameter
+    // Constructor assigns container object to be able to have access to the CentralUnit methods
     ContainerListAdapter(Container container) {
         if (container != null)
             this.container = container;
@@ -49,9 +49,6 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
         public TextView rowTextView;
         public ImageView imgView;
         public TextView rowTextViewValue;
-        public String colorDeviceValueOn = "#ffffff";
-        public String colorDeviceValueOff = "#b0b0b0";
-
     }
 
     @Override
@@ -107,8 +104,6 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
             viewHolder.rowTextView = (TextView)convertView.findViewById(R.id.rowTextView);
             viewHolder.imgView = (ImageView) convertView.findViewById(R.id.item_icon);
             viewHolder.rowTextViewValue = (TextView) convertView.findViewById(R.id.rowTextViewValue);
-            viewHolder.colorDeviceValueOff = context.getString(R.string.color_device_value_on);
-            viewHolder.colorDeviceValueOn = context.getString(R.string.color_device_value_off);
             convertView.setTag(viewHolder);
         }
         else {
