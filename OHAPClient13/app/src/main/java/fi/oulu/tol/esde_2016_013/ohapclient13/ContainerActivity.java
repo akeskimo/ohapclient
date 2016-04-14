@@ -12,7 +12,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
  * @version 1.1
  */
-
+ 
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
