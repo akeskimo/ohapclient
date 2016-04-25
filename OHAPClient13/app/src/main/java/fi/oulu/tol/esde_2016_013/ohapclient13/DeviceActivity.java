@@ -2,11 +2,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 /**
  * Description:
- * Main Activity for an OHAP client application for monitoring and actuating house devices via
- * remote control Android application
- *
- * Compatibility:
- * Android SDK API15 and up
+ * Device activity that displays device information and is able to actuate them
  *
  * Change history:
  * v1.0     Aapo Keskimolo      Initial version with layout, OHAP server, 1 dummy device, widgets and listeners
@@ -20,11 +16,10 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 import com.opimobi.ohap.*;
 
+
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.SeekBar.OnSeekBarChangeListener;
@@ -34,6 +29,9 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.net.MalformedURLException;
+
+import fi.oulu.tol.esde_2016_013.ohapclient13.utility.LogContainer;
+import fi.oulu.tol.esde_2016_013.ohapclient13.utility.MessageLog;
 
 
 public class DeviceActivity extends ActionBarActivity {
@@ -58,7 +56,7 @@ public class DeviceActivity extends ActionBarActivity {
     private TextView textViewSwitch = null;
 
     // singleton central unit container
-    private static CentralUnit centralUnit = null;
+    private static CentralUnitConnection centralUnit = null;
 
     // active device displayed on the UI
     private Device activeDevice = null;
@@ -80,13 +78,19 @@ public class DeviceActivity extends ActionBarActivity {
         switch1 = (Switch)(findViewById(R.id.switch1));
 
 
-        // Implementing listener for seekbar for changing decimal value of the Device
         seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+            // listener for changing decimal value of decimal device
 
            @Override
            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                try {
-                   activeDevice.setDecimalValue(progress);
+                   double value = scale(
+                           (double)progress,
+                           0.0,
+                           seekBar.getMax(),
+                           activeDevice.getMinValue(),
+                           activeDevice.getMaxValue() );
+                   activeDevice.changeDecimalValue(value );
                    textViewSeekBar.setText( String.format("%1.0f %%", activeDevice.getDecimalValue() )); // display device value
                } catch (Exception e) {
                    Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
@@ -101,36 +105,40 @@ public class DeviceActivity extends ActionBarActivity {
         });
 
 
-        // Implementing listener for switch for changing binary value of the Device
         switch1.setOnCheckedChangeListener( new OnCheckedChangeListener() {
 
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                // listener for switching on/off binary device
+
                 try {
                     activeDevice.setBinaryValue(isChecked);
+                    centralUnit.sendBinaryValueChanged(activeDevice);
                     textViewSwitch.setText( Boolean.toString(activeDevice.getBinaryValue() )); // display device value
                 } catch (Exception e) {
                     Log.e(TAG, "onProgressChanged() Unable to device value: " + e.getMessage() );
                 }
             }
-
         });
 
 
-        // Get URL from the parent intent (ContainerActivity)
+        // Get intent properties from parent (container activity)
         String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
-        final String central_unit_url = newUrl != null ? newUrl : getResources().getString(R.string.server_url);
+        int newId = getIntent().getIntExtra(DEVICE_ID, -1); // if id not found, -1 is returned
+
+        // URL: if no URL was sent (null), container default will be used
+        final String central_unit_url = newUrl != null ? newUrl : centralUnit.getURL().toString();
         Log.i(TAG, "onCreate() New CENTRAL_UNIT_URL received from intent: " + central_unit_url);
 
-        try {
-            // Instantiating CentralUnit placeholder for all containers
-            centralUnit = CentralUnitConnection.getInstance(); // get instance of singleton
+        // Device id: if no device id was sent (-1), selects device (1) -> prevents crash
+        final int device_id = newId != -1 ? newId: 1;
+        Log.i(TAG, "onCreate() New DEVICE_ID received from intent: " + newId);
 
-            Log.i(TAG, "onCreate() CentralUnit: " + centralUnit
-                    + " name: " + centralUnit.getName()
-                    + " container id: " + centralUnit.getId()
-                    + " item count: " + centralUnit.getItemCount()
-                    + " listening state: " + centralUnit.isListening());
+
+        try {
+            // Get instance of central unit connection
+            centralUnit = CentralUnitConnection.getInstance();
+            Log.i(TAG, "onCreate() CentralUnit: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
 
         } catch (MalformedURLException e) {
             Log.e(TAG, "onCreate() Unable to instantiate CentralUnit: " + e.getMessage());
@@ -139,75 +147,101 @@ public class DeviceActivity extends ActionBarActivity {
             Log.e(TAG, "onCreate() Unhandled error occurred: " + e.getMessage());
         }
 
-        // Get Device id from the parent intent (ContainerActivity)
-        // Note: Item index is the index corresponding to the row user has clicked on the ListView
-        // of ContainerActivity
-        int newId = getIntent().getIntExtra(DEVICE_ID, -1); // if id not found, -1 is returned
-        Log.i(TAG, "onCreate() New DEVICE_ID received from intent: " + newId);
-        if (newId == -1) {
-            Log.e(TAG, "onCreate() No device id found. Forcing active device_id to 1 (single device displayed)");
+
+        if (centralUnit != null) {
+            // retrieve selected device item from central unit
+            activeDevice = (Device) centralUnit.getItemById(device_id+1);
+            Log.d(TAG, "onCreate() Device " + device_id + ":" + activeDevice);
         }
-        final int device_id = newId != -1 ? newId: 1;
-
-
-        // If CentralUnit is instantiated, get the Device from CentralUnit
-        if (centralUnit != null)
-            // get device id
-            activeDevice = (Device)centralUnit.getItemById(device_id);
-        else
+        else {
             Log.e(TAG, "onCreate() Central device == null!");
+        }
 
-
-        // If Device was returned by CentralUnit, log device info and update UI widgets
         if (activeDevice != null) {
+            // sets device information on UI
 
-            // Log device information
-            Log.i(TAG, "onCreate() Device: " + activeDevice
-                    + " name: " + activeDevice.getName()
-                    + " device id: " + activeDevice.getId()
-                    + " type: " + activeDevice.getType()
-                    + " valueType: " + activeDevice.getValueType());
+            Log.i(TAG, "onCreate() Device: " + activeDevice + " name: " + activeDevice.getName() + " device id: " + activeDevice.getId() + " type: " + activeDevice.getType() + " valueType: " + activeDevice.getValueType());
 
             // Update header text on the action bar
             if (activeDevice.getType() == Device.Type.ACTUATOR) {
+                // set actuator title
                 setTitle("ACTUATOR");
+
             } else if (activeDevice.getType() == Device.Type.SENSOR) {
+                // set sensor title
                 setTitle("SENSOR");
             } else {
+
                 setTitle("-");
                 Log.wtf(TAG, "onCreate() Unable to set App title: Invalid device type (" + activeDevice.getType() + ")");
             }
 
-
-            // Visibility of bars is changed according to the active device value type:
             if (activeDevice.getValueType() == Device.ValueType.BINARY) {
-                // Switch is visible when active device has binary value type, only
-                seekBar.setVisibility( View.GONE);
-                textViewSeekBar.setVisibility( View.GONE);
+                // switch is visible when active device has binary value type, only
+
+                switch1.setVisibility( View.VISIBLE);
+                textViewSwitch.setVisibility( View.VISIBLE);
+
+                // set active value
                 switch1.setChecked( activeDevice.getBinaryValue() );
+
             } else if (activeDevice.getValueType() == Device.ValueType.DECIMAL) {
-                // Seekbar is visible when active device has decimal value type, only
-                switch1.setVisibility( View.GONE);
-                textViewSwitch.setVisibility( View.GONE);
-                seekBar.setProgress( (int)activeDevice.getDecimalValue() );
+                // seekbar is visible when active device has decimal value type, only
+
+                seekBar.setVisibility(View.VISIBLE);
+                textViewSeekBar.setVisibility(View.VISIBLE);
+
+                // scale seekbar value
+                seekBar.setMax(Integer.parseInt( getString(R.string.seekbar_maxvalue)) ); // widget default 100
+                double value = scale(
+                        activeDevice.getDecimalValue(),
+                        activeDevice.getMinValue(),
+                        activeDevice.getMaxValue(),
+                        0.0,
+                        (double)seekBar.getMax() );
+                // set seekbar value
+                seekBar.setProgress( (int)value );
+
             } else {
                 Log.wtf(TAG, "onCreate() Unable to set device visibility: Invalid device value type (" + activeDevice.getValueType() + ")");
             }
 
-            // Setting values on the TextView objects to the device values
-            textViewContainerName.setText( centralUnit.getName());
+            // set values on the textview objects
+            textViewContainerName.setText( centralUnit.getName()); // TODO hierarchy display here
             textViewDeviceName.setText( activeDevice.getName());
             textViewDeviceDesc.setText( activeDevice.getDescription());
         }
 
         else {
-            Log.e(TAG, "onCreate() Active device == null! Unable to set View attributes! Device id: " + newId + ", container id: " + centralUnit.getId());
+            Log.e(TAG, "onCreate() Active device == null! Unable to set View attributes!" + " Device id: " + newId + ", container id: " + centralUnit.getId());
         }
     }
 
-    public void onDestroy() {
-        Log.i(TAG, "onDestroy() Activity has been terminated.");
-        super.onDestroy();
+    public double scale(double value, double min, double max, double scaleMin, double scaleMax) {
+        return max * (value - min) * (max - min) / (scaleMax -scaleMin);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+    }
 }

@@ -9,6 +9,7 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".ContainerActivity"
+            android:launchMode="singleTop"
             android:label="@string/title_container_activity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -40,6 +41,25 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
         </activity>
+        <activity
+            android:name=".LogActivity"
+            android:label="@string/title_log_activity"
+            android:parentActivityName=".ContainerActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="fi.oulu.tol.esde_2016_013.ohapclient13.ContainerActivity" />
+        </activity>
+        <activity
+            android:name=".MessageLogActivity"
+            android:label="@string/title_message_activity"
+            android:parentActivityName=".LogActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="fi.oulu.tol.esde_2016_013.ohapclient13.LogActivity" />
+        </activity>
     </application>
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 </manifest>
