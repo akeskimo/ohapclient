@@ -4,9 +4,8 @@
     tools:context=".ContainerActivity">
 
 
-
     <item
-        android:id="@+id/menu_container"
+        android:id="@+id/menu_log"
         android:layout_centerVertical="true"
         android:layout_width="@dimen/menu_ic_width"
         android:layout_height="@dimen/menu_ic_height"
@@ -14,10 +13,23 @@
         android:layout_marginRight="@dimen/menu_ic_marginRight"
         android:layout_marginTop="@dimen/menu_ic_marginTop"
         android:layout_marginBottom="@dimen/menu_ic_marginBottom"
-        android:title="@string/menu_settings"
+        android:title="@string/menu_log"
         android:icon="@drawable/ic_house_list"
         app:showAsAction="always" />
 
+
+    <item
+        android:id="@+id/menu_ping"
+        android:layout_centerVertical="true"
+        android:layout_width="@dimen/menu_ic_width"
+        android:layout_height="@dimen/menu_ic_height"
+        android:layout_marginLeft="@dimen/menu_ic_marginLeft"
+        android:layout_marginRight="@dimen/menu_ic_marginRight"
+        android:layout_marginTop="@dimen/menu_ic_marginTop"
+        android:layout_marginBottom="@dimen/menu_ic_marginBottom"
+        android:title="@string/menu_ping"
+        android:icon="@drawable/ic_ping"
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/menu_settings"

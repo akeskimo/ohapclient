@@ -6,15 +6,16 @@
     <!-- Container activity -->
     <string name="title_container_activity">OHAPClient13</string>
     <string name="menu_click_toast">Already in the Activity</string>
+    <string name="ping_message">ping</string>
 
     <!-- Container list adapter -->
     <string name="color_device_value_on">#ffffff</string>
     <string name="color_device_value_off">#d0d0d0</string>
 
     <!-- Device activity -->
-    <string name="title_device_activity">Device</string>
-    <string name="device_name">default</string>
-    <string name="device_desc">default</string>
+    <string name="title_device_activity">No device type</string>
+    <string name="device_name">No device name</string>
+    <string name="device_desc">No device id</string>
     <string name="centralunit_name">OHAP Test Server</string>
     <string name="container_hierarchy">Offline</string>
     <string name="switch_text">Change binary value</string>
@@ -26,6 +27,7 @@
     <string name="pref_autoconnect_key">pref_autoconnect</string>
     <string name="pref_autoconnect_title">Auto-connect</string>
     <string name="pref_autoconnect_summary">Automatically connects to the server</string>
+    <string name="pref_autoconnect_default">true</string>
     <string name="pref_url_key">pref_url</string>
     <string name="pref_url_title">Server</string>
     <string name="pref_url_summary">Default</string>
@@ -38,14 +40,23 @@
     <!-- Helper activity -->
     <string name="title_activity_helper">About OHAPClient13</string>
     <string name="text_about">
-        \nThis application has been developed as course work for 815303A Embedded Software Development
-        Environments -course during Academic year 2016 at the University of Oulu. \n\n\n
-        Authors: \n
-        Aapo Keskimolo (aapokesk@gmail.com) \n
-        Mikko Yliniemi (mikkoyli@paju.oulu.fi) </string>
+        OHAPClient13 Remote Control app for Open Home Automation Protocol (OHAP)
+        \n\nThis application has been developed as course work for 815303A Embedded Software Development
+        Environments -course during Academic year 2016 at the University of Oulu.
+        \n\n\nAuthor: Aapo Keskimolo (aapokesk@gmail.com) \n </string>
 
     <!-- Menu bar -->
+    <string name="menu_log">Log</string>
+    <string name="menu_ping">Ping</string>
     <string name="menu_settings">Preferences</string>
     <string name="menu_help">Help</string>
+
+    <!-- Log activity -->
+    <string name="title_log_activity">Logging</string>
+
+    <!-- Message activity -->
+    <string name="title_message_activity">Message</string>
+    <string name="log_message_default">Default</string>
+
 
 </resources>

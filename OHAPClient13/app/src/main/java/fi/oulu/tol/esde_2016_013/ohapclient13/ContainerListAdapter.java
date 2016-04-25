@@ -14,6 +14,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  */
 
 import android.content.Context;
+import android.database.DataSetObservable;
 import android.database.DataSetObserver;
 import android.graphics.Color;
 import android.util.Log;
@@ -25,27 +26,54 @@ import android.widget.TextView;
 
 import com.opimobi.ohap.Container;
 import com.opimobi.ohap.Device;
+import com.opimobi.ohap.EventSource;
+import com.opimobi.ohap.Item;
 
 
-public class ContainerListAdapter implements android.widget.ListAdapter {
+public class ContainerListAdapter implements android.widget.ListAdapter, EventSource.Listener<Container,Item> {
 
     // Log tag
     private final String TAG = this.getClass().getSimpleName();
 
-    // Container object that will store the item information displayed on ListView
+    // Container object that will store the item information that will be displayed on ListView
     private Container container;
 
-    // Constructor assigns container object to be able to have access to the CentralUnit methods
-    ContainerListAdapter(Container container) {
-        if (container != null)
+    // Contains array of all observers that will be notified upon EventSource.onEvent()-call
+    private final DataSetObservable dataSetObservable = new DataSetObservable();
+
+    public ContainerListAdapter(Container container) {
+        // Constructor assigns container object to be able to have access to the CentralUnit methods
+
+        if (container != null) {
             this.container = container;
-        else
+
+            // Register event listeners when container is added with an item
+            container.itemAddedEventSource.addListener(this);
+            container.itemRemovedEventSource.addListener(this);
+
+        } else {
             throw new NullPointerException("Container object is null!");
+        }
     }
 
-    // This ViewHolder class contains all widgets that will be used to display row information
-    // on ListView. Using existing widgets (=recycling), is much faster than creating new objects
+    public void registerDataSetObserver(DataSetObserver observer) {
+        dataSetObservable.registerObserver(observer);
+    }
+
+    public void unregisterDataSetObserver(DataSetObserver observer) {
+        dataSetObservable.unregisterObserver(observer);
+    }
+
+    @Override
+    public void onEvent(Container container, Item item) {
+        Log.d(TAG, "onEvent() Container: " + container.getId() + " changed " + item.getId());
+        dataSetObservable.notifyChanged();
+    }
+
     private static class ViewHolder {
+        // This ViewHolder class contains all widgets that will be used to display row information
+        // on ListView. Using existing widgets (=recycling), is much faster than creating new objects
+
         public TextView rowTextView;
         public ImageView imgView;
         public TextView rowTextViewValue;
@@ -60,12 +88,6 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
     public boolean isEnabled(int position) {
         return true; // true = interactive row
     }
-
-    @Override
-    public void registerDataSetObserver(DataSetObserver observer) { }
-
-    @Override
-    public void unregisterDataSetObserver(DataSetObserver observer) { }
 
     @Override
     public int getCount() {
@@ -92,9 +114,11 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        // View inflater service
-        // uses Viewholder class to store the currently visible views that are recycled
+        // View inflater service. Uses Viewholder class to store the visible views references
+
         ViewHolder viewHolder;
+        String text = "";
+
         if (convertView == null) {
             Context context = parent.getContext();
             LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -111,54 +135,82 @@ public class ContainerListAdapter implements android.widget.ListAdapter {
 //            Log.d(TAG, "getView() No existing ViewHolder: Getting new View from context");
         }
 
-        String text = "";
-
         try {
-            // 1. Get item in the selected position and cast it to device object
-            Device device = (Device)container.getItemByIndex(position);
-            // 2. Get item name
-            text = device.getName();
-            // 3. Set row icon to match the device type
-            if (device.getType() == Device.Type.ACTUATOR) {
-                viewHolder.imgView.setImageResource(R.drawable.ic_lamp);
-                if (device.getBinaryValue()) {
-                    viewHolder.rowTextViewValue.setText("ON");
-                    viewHolder.rowTextViewValue.setTextColor( Color.CYAN);
-                }
-                else {
-                    viewHolder.rowTextViewValue.setText("OFF");
-                    viewHolder.rowTextViewValue.setTextColor( Color.GRAY );
-                }
-            }
-            else if (device.getType() == Device.Type.SENSOR) {
-                viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
-                if (device.getDecimalValue() != 0) {
-                    viewHolder.rowTextViewValue.setText(
-                            String.format("%1.0f %%", device.getDecimalValue() ));
-                    viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+
+            if ( container.getItemByIndex(position) instanceof Container ) {
+                // clicked item is a container
+
+                Container subContainer = (Container)container.getItemByIndex(position);
+                text = subContainer.getName();
+
+                // Set displayed row icon and text
+                viewHolder.imgView.setImageResource(R.drawable.ic_container);
+                viewHolder.rowTextViewValue.setText("Items: " + subContainer.getItemCount());
+                viewHolder.rowTextViewValue.setTextColor( Color.GRAY );
+
+            } else {
+                // clicked item is a device
+
+                Device device = (Device) container.getItemByIndex(position);
+                text = device.getName();
+
+                // Set displayed row icon and device value
+
+                if (device.getType() == Device.Type.ACTUATOR) {
+                    // type actuator
+
+                    viewHolder.imgView.setImageResource(R.drawable.ic_lamp);
+                    if (device.getBinaryValue()) {
+                        viewHolder.rowTextViewValue.setText("ON");
+                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+                    } else {
+                        viewHolder.rowTextViewValue.setText("OFF");
+                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
+                    }
+
+                } else if (device.getType() == Device.Type.SENSOR) {
+                    // type sensor
+
+                    viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
+                    if (device.getDecimalValue() != 0) {
+                        viewHolder.rowTextViewValue.setText(
+                                String.format("%1.0f %%", device.getDecimalValue()));
+                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+                    } else {
+                        viewHolder.rowTextViewValue.setText("OFF");
+                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
+                    }
+
+                } else if (device.getType() == Device.Type.SENSOR) {
+                    // type sensor
+
+                    viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
+                    if (device.getDecimalValue() != 0) {
+                        viewHolder.rowTextViewValue.setText(
+                                String.format("%1.0f %%", device.getDecimalValue()));
+                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+                    } else {
+                        viewHolder.rowTextViewValue.setText("OFF");
+                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
+                    }
+
                 } else {
-                    viewHolder.rowTextViewValue.setText( "OFF" );
-                    viewHolder.rowTextViewValue.setTextColor( Color.GRAY);
+                    Log.wtf(TAG, "getView() No device type found!");
                 }
-            }
-            else {
-                Log.wtf(TAG, "getView() No device type found!");
             }
 
         } catch (Exception e) {
             Log.d(TAG, "getView() Unable to get device information "  + e. getMessage() );
-            e.printStackTrace();
         }
 
 
         try {
-            // 4. Set text on row
+            // set text to display item name
             viewHolder.rowTextView.setText( text );
 
         } catch (Exception e) {
             Log.e(TAG, "getView() Unable to set viewHolder text at position "
                     + position + " " + e.getMessage() );
-            e.printStackTrace();
         }
         return convertView;
     }

@@ -1,5 +1,7 @@
 package com.opimobi.ohap;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 /**

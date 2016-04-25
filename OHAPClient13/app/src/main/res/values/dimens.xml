@@ -14,6 +14,9 @@
     <!-- DeviceActivity -->
     <dimen name="layout_rowTop_height">20dp</dimen>
 
+    <!-- LogActivity -->
+    <dimen name="log_text_size">10sp</dimen>
+
     <!-- Menu bar -->
     <dimen name="menu_ic_width">32dp</dimen>
     <dimen name="menu_ic_height">32dp</dimen>
