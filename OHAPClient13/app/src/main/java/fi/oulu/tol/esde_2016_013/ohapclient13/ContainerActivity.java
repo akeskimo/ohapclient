@@ -126,15 +126,17 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     protected void onResume() {
         super.onResume();
-//
-//        // create list view objects with list adapter
-//        createListView();
-//
-//        // start networking
-//        connect();
-//
-//        // register sensor listener
-//        sensorManager.registerListener(this, accelerometer, sensorManager.SENSOR_DELAY_NORMAL);
+
+        Log.d(TAG, "onResume() Called");
+
+        // create list view objects with list adapter
+        createListView();
+
+        // start networking
+        connect();
+
+        // register sensor listener
+        sensorManager.registerListener(this, accelerometer, sensorManager.SENSOR_DELAY_NORMAL);
     }
 
 
@@ -142,6 +144,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause() Called");
+
+        // unregister sensor listener
+        sensorManager.unregisterListener(this);
     }
 
 
@@ -212,9 +217,6 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         // stop networking
         centralUnit.stop();
-
-        // unregister sensor listener
-        sensorManager.unregisterListener(this);
 
 
         Log.d(TAG, "onDestroy() Called");
@@ -449,6 +451,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         } else if (messageAction.equals("Connection closed")) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
+            connect();
         } else if (messageAction.equals("Connected")){
             msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             Toast.makeText(this, msg, Toast.LENGTH_LONG);

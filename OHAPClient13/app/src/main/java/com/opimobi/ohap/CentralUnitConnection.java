@@ -117,10 +117,10 @@ public class CentralUnitConnection extends CentralUnit {
         public OutgoingMessageAction(OutgoingMessage outgoingMessage) {
             this.outgoingMessage = outgoingMessage;
         }
-
         @Override
         public void run() {
             // Write outgoing message to outputstream and forward it to outgoing handler
+
             if (isConnected()) {
                 if (socket != null) {
                     try {
@@ -140,7 +140,8 @@ public class CentralUnitConnection extends CentralUnit {
 
 
     private class ActivityAction implements Runnable {
-        // This class will post an error message to the HandlerThread queue.
+        // This class will post an error message to the HandlerThread queue
+
         private String messageAction;
 
         public ActivityAction(String messageAction) {
@@ -150,6 +151,7 @@ public class CentralUnitConnection extends CentralUnit {
         @Override
         public void run() {
             // Forward error message
+
             if (null != observer) {
                 observer.handleActivityResponse(messageAction);
                 Log.d(TAG, "ActivityAction.run() Sent new activity action message: " + messageAction);
@@ -197,8 +199,7 @@ public class CentralUnitConnection extends CentralUnit {
                     try {
                         msg.readFrom(inputStream);
                         dataCame = true;
-                    } catch (IOException e) {
-                        Log.e(TAG, "incomingThread.run() Socket read error");
+                    } catch (IOException e) {Log.e(TAG, "incomingThread.run() Socket read error");
 
                         if (e.getMessage() != null) {
                             if (e.getMessage().equals("End of message input.")) {

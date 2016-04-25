@@ -74,9 +74,10 @@ public class PreferencesFragment extends PreferenceFragment {
                         preference.setSummary( value);
                         try {
                             centralUnit.setURL(new URL(value + ":" + port_number));
+                            url_address = value;
                             Log.i(TAG, "setOnPreferenceChangeListener() CentralUnit URL updated: " + centralUnit.getURL().toString());
                         } catch (MalformedURLException e) {
-                            Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL");
+                            Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL: " + e.getMessage());
                         }
                         return true;
                     }
@@ -104,29 +105,33 @@ public class PreferencesFragment extends PreferenceFragment {
 
                 String key = preference.getKey();
                 String value = (String) newValue;
+                String msg = "", ttl = "";
 
                 if (key.equals(getString(R.string.pref_port_key))) {
                     // port input
 
-                    Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + newValue);
+                    Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + value);
 
                     if (validatePort(value)) {
                         preference.setSummary(value);
                         try {
-                            centralUnit.setURL(new URL(value + ":" + port_number));
+                            centralUnit.setURL(new URL(url_address + ":" + value));
+                            port_number = value;
                             Log.i(TAG, "setOnPreferenceChangeListener() CentralUnit URL updated: "
                                     + centralUnit.getURL().toString() );
+                            return true;
                         } catch (MalformedURLException e) {
-                            Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL");
+                            ttl = "Malformed URL";
+                            msg = e.getMessage();
+                            Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL: " + e.getMessage());
+                            Log.e(TAG, "setOnPreferenceChangeListener() URL: " + centralUnit.getURL().toString());
                         }
-                        return true;
                     } else {
-                        String ttl = "Invalid port";
-                        String msg = "Port must be a number between 0-65535";
-                        alertDialogMessageOk(ttl, msg, "OK");
-                        return false;
+                        ttl = "Invalid port";
+                        msg = "Port must be a number between 0-65535";
                     }
                 }
+                alertDialogMessageOk(ttl, msg, "OK");
                 return false;
             }
         });
