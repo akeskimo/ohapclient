@@ -29,7 +29,7 @@ public class EventSource<Source, Event> {
      * @param <Source> The type of the aggregating class.
      * @param <Event> The type of the fired event.
      */
-    public static interface Listener<Source, Event> {
+    public interface Listener<Source, Event> {
 
         /**
          * Handles an event.
@@ -38,7 +38,7 @@ public class EventSource<Source, Event> {
          * @param event The event data. Implementation may left this null.
          */
         void onEvent(Source source, Event event);
-    };
+    }
 
     /**
      * The aggregating object.
