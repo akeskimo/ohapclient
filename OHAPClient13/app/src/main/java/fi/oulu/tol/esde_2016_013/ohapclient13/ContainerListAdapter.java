@@ -41,8 +41,9 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
     // Contains array of all observers that will be notified upon EventSource.onEvent()-call
     private final DataSetObservable dataSetObservable = new DataSetObservable();
 
+
     public ContainerListAdapter(Container container) {
-        // Constructor assigns container object to be able to have access to the CentralUnit methods
+        // Constructor assigns container that will be displayed on the listview
 
         if (container != null) {
             this.container = container;
@@ -66,7 +67,7 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
 
     @Override
     public void onEvent(Container container, Item item) {
-        Log.d(TAG, "onEvent() Container: " + container.getId() + " changed " + item.getId());
+        Log.d(TAG, "onEvent() Container: " + container.getId() + " has changed item: " + item.getId());
         dataSetObservable.notifyChanged();
     }
 

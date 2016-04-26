@@ -8,6 +8,10 @@ import com.opimobi.ohap.message.IncomingMessage;
 
 public interface ConnectionObserver {
     // interface that will handle the communication between the network client and activity
+
+    // handle incoming messages
     void handleMessageResponse(IncomingMessage incomingMessage);
+
+    // handle activity responses
     void handleActivityResponse(String error);
 }

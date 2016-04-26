@@ -38,14 +38,13 @@ import java.util.Random;
 
 public class CentralUnitConnection extends CentralUnit {
 
-    private static int incomingThreadCtr = 0;
+    // Log tag
+    private final String TAG = this.getClass().getSimpleName();
 
     // Class specific
     private static CentralUnitConnection instance = null;
-    private final String TAG = this.getClass().getSimpleName();
     private static int nListeners;
-    private static final int maxDummyNumber = 20;
-    private static int nDummy; // dummy counter
+    private static int dummyNumber; // dummy counter
     private Device[] dummyDevices; // dummy object array
 
     // Networking
@@ -54,7 +53,6 @@ public class CentralUnitConnection extends CentralUnit {
     private boolean autoConnect = false;
     private boolean listeningStart = false;
     private static final int retryAttempts = 3;
-    private static int attempt;
     private static HandlerThread handlerThread = null;
     private static IncomingThread incomingThread = null;
     private Socket socket = null;
@@ -62,6 +60,9 @@ public class CentralUnitConnection extends CentralUnit {
     private OutputStream outputStream = null;
     private InputStream inputStream = null;
     private ConnectionObserver observer = null;
+    private static int incomingThreadCtr = 0;
+    private boolean reconnectRequest;
+    private boolean outgoingMessageActionFinished = true;
 
 
     // private constructor for singleton implementation
@@ -78,13 +79,27 @@ public class CentralUnitConnection extends CentralUnit {
     }
 
     public void initialize(URL url, ConnectionObserver observer) {
-        // Initializing values for singleton class
-//        createDummies(this);
-        // Set container name
-//        setName("Dummy Container");
-//        setDescription("Dummies have been created during initialization of the class");
+        // initializes central unit singleton
         instance.setURL(url);
         this.observer = observer;
+    }
+
+
+    public void initialize(URL url, ConnectionObserver observer, Container container, int nDummies) {
+        // initializes central unit singleton with dummy devices
+        createDummies(container, nDummies);
+        setName("Dummy Container");
+        setDescription("Dummies have been created during initialization of the class");
+        instance.setURL(url);
+        this.observer = observer;
+    }
+
+    public void setReconnectRequest(boolean reconnectRequest) {
+        this.reconnectRequest = reconnectRequest;
+    }
+
+    public boolean getReconnectRequest() {
+        return reconnectRequest;
     }
 
 
@@ -109,32 +124,39 @@ public class CentralUnitConnection extends CentralUnit {
 
 
     private class OutgoingMessageAction implements Runnable {
-        // This will be the action executed on outgoing messages. The action is queued in the
-        // HandlerThread
+        // This will be the action executed on outgoing messages. The actions will be queued in
+        // handlerThread
 
         private OutgoingMessage outgoingMessage;
 
         public OutgoingMessageAction(OutgoingMessage outgoingMessage) {
             this.outgoingMessage = outgoingMessage;
         }
+        
         @Override
         public void run() {
             // Write outgoing message to outputstream and forward it to outgoing handler
 
+            outgoingMessageActionFinished = false;
+
             if (isConnected()) {
                 if (socket != null) {
+
                     try {
                         outgoingMessage.writeTo(outputStream);
-                        Log.d(TAG, "OutGoingMessageAction.run() Sent message: " + outgoingMessage);
+                        Log.i(TAG, "OutGoingMessageAction.run() Sent message: " + outgoingMessage);
+
                     } catch (IOException e) {
-                        Log.d(TAG, "OutGoingMessageAction.run() Unable to write to output stream: " +
-                                e.getMessage());
+                        Log.e(TAG, "OutGoingMessageAction.run() Unable to write to outputStream: " + e.getMessage());
                     }
                 }
+
             } else {
                 String errorMsg = "Unable to sent message: Client has no connection.";
                 Log.e(TAG, "OutGoingMessageAction.run() " + errorMsg);
             }
+
+            outgoingMessageActionFinished = true;
         }
     }
 
@@ -171,7 +193,6 @@ public class CentralUnitConnection extends CentralUnit {
 
             incomingThreadCtr++;
             Log.d(TAG, "Incoming threads running: " + incomingThreadCtr);
-            attempt = 0;
 
             try {
                 // Tie outgoing handler to secondary handler thread looper
@@ -183,11 +204,11 @@ public class CentralUnitConnection extends CentralUnit {
 
             connect(incomingHandler);
 
-            if (listeningStart) {
-                // inform the server that centralUnitConnection has started listening
-                sendListeningStart(instance);
-                listeningStart = false;
-            }
+//            if (listeningStart) {
+//                // inform the server that centralUnitConnection has started listening
+//                sendListeningStart(instance);
+//                listeningStart = false;
+//            }
 
             while (running) {
                 // parses and forwards all incoming messages to incoming handler
@@ -241,6 +262,7 @@ public class CentralUnitConnection extends CentralUnit {
 
             while (running) {
                 attempt++;
+
                 try {
 
                     socket = new Socket();
@@ -259,21 +281,6 @@ public class CentralUnitConnection extends CentralUnit {
 
                     sendLogin("someguy", "password");
 
-//                    // Login
-//                    Log.d(TAG, "Send login message");
-//                    OutgoingMessage outgoingMessage = new OutgoingMessage();
-//                    outgoingMessage.integer8(0x00)
-//                            .integer8(0x01)
-//                            .text("someguy")
-//                            .text("password");
-//                    outgoingMessageHandler.post(new OutgoingMessageAction(outgoingMessage));
-
-//                if (firstConnectionAttempt) {
-//                    // with first connection attempt, inform server that central unit starts listening
-//                    sendListeningStart(this);
-//                    firstConnectionAttempt = false;
-//                }
-
                     return;
 
                 } catch (IOException e) {
@@ -281,18 +288,16 @@ public class CentralUnitConnection extends CentralUnit {
 
                     Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout/1000 + " seconds." );
 
-                    if (attempt == 3) {
+                    if (attempt == 1) {
                         // send error message to connection observer
 
                         if (observer != null && incomingHandler != null) {
 //                            if (attempt == 3) {
                                 String errorMsg = "No connection";
                                 incomingHandler.post(new ActivityAction(errorMsg));
-                            }
-//                        } else{
-//                    Log.e(TAG, "connect() Unable to send error action: obs = " + observer + ", incHandler = " + incomingHandler);
-//                }
-
+                        }
+                    } else if (attempt > 1) {
+                        incomingHandler.post(new ActivityAction("Reconnecting"));
                     }
 
                     try {
@@ -306,19 +311,15 @@ public class CentralUnitConnection extends CentralUnit {
             setConnected(false);
         }
 
+
         private void close(Handler incomingHandler) {
 
             if (socket != null) {
 
                 sendLogout();
 
-                // send logout message
-                if (outgoingMessageHandler != null) {
-                    OutgoingMessage outgoingMessage = new OutgoingMessage();
-                    outgoingMessage.integer8(0x01)
-                            .text("Bye");
-                    outgoingMessageHandler.post(new OutgoingMessageAction(outgoingMessage));
-                }
+                // wait for the outgoing message action to finish
+                while(!outgoingMessageActionFinished) {}
 
                 try {
                     socket.close();
@@ -396,8 +397,6 @@ public class CentralUnitConnection extends CentralUnit {
 
         setRunning(false);
 
-        sendLogout();
-
         if (socket != null) {
             try {
                 socket.close();
@@ -438,11 +437,13 @@ public class CentralUnitConnection extends CentralUnit {
     protected void listeningStateChanged(Container container, boolean listening) {
 
         if (listening) {
+            // start container listening
 
-            if (nListeners == 0) {
+            nListeners++;
+
+            if (nListeners == 1) {
                 startNetworking();
             }
-            nListeners++;
 
             // send listening start
             if (isConnected()) {
@@ -454,16 +455,14 @@ public class CentralUnitConnection extends CentralUnit {
                 listeningStart = true;
             }
 
-//            if (!firstConnectionAttempt) {
-//                // on first attempt listen request is sent after initial connection
-//                // reason: incoming thread socket connection has to come up first
-//                sendListeningStart(container);
-//            }
+        } else {
+            // stop container from listening
 
-        }
-        else {
-            sendListeningStop(container);
-            nListeners--;
+            if (nListeners > 0) {
+                nListeners--;
+                sendListeningStop(container);
+            }
+
             if (nListeners == 0) {
                 stopNetworking();
             }
@@ -474,7 +473,7 @@ public class CentralUnitConnection extends CentralUnit {
 
     @Override
     protected void changeBinaryValue(Device device, boolean value) {
-        device.changeBinaryValue(value);
+        sendBinaryValueChanged(device, value);
         Log.d(TAG, "changeDecimalValue() Device " + device.getId() + " binary value changed to: " + value);
     }
 
@@ -631,28 +630,28 @@ public class CentralUnitConnection extends CentralUnit {
     }
 
 
-    public void sendDecimalValueChanged(Device device) {
+    public void sendDecimalValueChanged(Device device, double value ) {
 
         if (null != outgoingMessageHandler) {
             OutgoingMessage outgoingMessage = new OutgoingMessage();
             outgoingMessage.integer8(0x09)
                     .integer32(device.getId())
-                    .decimal64(device.getDecimalValue());
+                    .decimal64(value);
             outgoingMessageHandler.post(new OutgoingMessageAction(outgoingMessage));
-            Log.d(TAG, "sendDecimalValueChanged() Sent decimal value changed for : " + device.getId() + ", new value = " + device.getDecimalValue());
+            Log.d(TAG, "sendDecimalValueChanged() Sent device " + device.getId() + " new decimal value = " + value);
         }
     }
 
 
-    public void sendBinaryValueChanged(Device device) {
+    public void sendBinaryValueChanged(Device device, boolean value) {
 
         if (null != outgoingMessageHandler) {
             OutgoingMessage outgoingMessage = new OutgoingMessage();
             outgoingMessage.integer8(0x0a)
                     .integer32(device.getId())
-                    .binary8(device.getBinaryValue());
+                    .binary8(value);
             outgoingMessageHandler.post(new OutgoingMessageAction(outgoingMessage));
-            Log.d(TAG, "sendBinaryValueChanged() Sent binary value changed for : " + device.getId() + ", new value = " + device.getBinaryValue());
+            Log.d(TAG, "sendBinaryValueChanged() Sent device " + device.getId() + " new binary value = " + value);
         }
     }
 
@@ -703,18 +702,18 @@ public class CentralUnitConnection extends CentralUnit {
     // NOTE: CODE BELOW THIS LINE IS FOR CREATING DUMMY OBJECTS IN THE CONTAINER (ONLY)
 
 
-    public void createDummies(Container container) {
-        dummyDevices = new Device[maxDummyNumber];
+    public void createDummies(Container container, int nDummies) {
+        dummyDevices = new Device[nDummies];
         // fill array with dummy objects
         // note: dummies will be automatically registered to the container
-        for (int i = 0; i < maxDummyNumber; i++) {
-            dummyDevices[i] = getRandomDummyDevice(this);
+        for (int i = 0; i < nDummies; i++) {
+            dummyDevices[i] = getRandomDummyDevice(container);
         }
     }
 
     private Device getRandomDummyDevice(Container container) {
 
-        nDummy++; // increase dummy ctr, which will act as an id/index in the container
+        dummyNumber++; // increase dummy ctr, which will act as an id/index in the container
         Device newDevice;
 
         // create random numbers
@@ -722,19 +721,19 @@ public class CentralUnitConnection extends CentralUnit {
         int randNum = rand.nextInt(2)+1; // random number [1,4]
 
         if (randNum == 1) {
-            newDevice = new Device(container, nDummy, Device.Type.ACTUATOR, Device.ValueType.BINARY);
+            newDevice = new Device(container, dummyNumber, Device.Type.ACTUATOR, Device.ValueType.BINARY);
             newDevice.setName("Ceiling Lamp");
             newDevice.setBinaryValue(false);
         }
         else {
-            newDevice = new Device(container, nDummy, Device.Type.SENSOR, Device.ValueType.DECIMAL);
+            newDevice = new Device(container, dummyNumber, Device.Type.SENSOR, Device.ValueType.DECIMAL);
             newDevice.setDecimalValue(0);
             newDevice.setName("Temperature Sensor");
         }
 
         newDevice.setDescription( "DeviceID: " + newDevice.getId() );
 
-        Log.i(TAG, "getRandomDummyDevice() Dummy#" + nDummy +
+        Log.i(TAG, "getRandomDummyDevice() Dummy#" + dummyNumber +
                 " created, name: " + newDevice.getName() +
                 ", item id: " + newDevice.getId() +
                 ", type: " + newDevice.getType() +

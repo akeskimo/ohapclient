@@ -33,13 +33,12 @@ public class PreferencesFragment extends PreferenceFragment {
     // Log tag
     private final String TAG = getClass().getSimpleName();
 
-    // Central unit object
     private CentralUnitConnection centralUnit = null;
     private String url_address, port_number;
-
-    // alert dialog box
     AlertDialog alert = null;
     private boolean alertShown = false;
+
+    private boolean connectionPreferenceChanged = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -79,6 +78,7 @@ public class PreferencesFragment extends PreferenceFragment {
                         } catch (MalformedURLException e) {
                             Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL: " + e.getMessage());
                         }
+                        connectionPreferenceChanged = true;
                         return true;
                     }
                     else {
@@ -119,6 +119,7 @@ public class PreferencesFragment extends PreferenceFragment {
                             port_number = value;
                             Log.i(TAG, "setOnPreferenceChangeListener() CentralUnit URL updated: "
                                     + centralUnit.getURL().toString() );
+                            connectionPreferenceChanged = true;
                             return true;
                         } catch (MalformedURLException e) {
                             ttl = "Malformed URL";
@@ -151,6 +152,7 @@ public class PreferencesFragment extends PreferenceFragment {
                     // auto-connect key value
                     Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + value);
                     centralUnit.setAutoConnect( value );
+                    connectionPreferenceChanged = true;
                     return true;
                 }
                 return false;
@@ -159,13 +161,10 @@ public class PreferencesFragment extends PreferenceFragment {
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-    }
+    public void onDestroy() {
+        super.onDestroy();
 
-    @Override
-    public void onPause() {
-        super.onPause();
+        centralUnit.setReconnectRequest(connectionPreferenceChanged);
     }
 
     private boolean validateUrl( String url) {

@@ -17,6 +17,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
@@ -29,7 +30,6 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
-import android.util.FloatMath;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -38,10 +38,12 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.opimobi.ohap.CentralUnit;
 import com.opimobi.ohap.CentralUnitConnection;
 import com.opimobi.ohap.ConnectionObserver;
 import com.opimobi.ohap.Container;
 import com.opimobi.ohap.Device;
+import com.opimobi.ohap.Item;
 import com.opimobi.ohap.message.IncomingMessage;
 
 import java.net.MalformedURLException;
@@ -62,28 +64,43 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     // intent extras
     private final static String CENTRAL_UNIT_URL = "fi.oulu.tol.esde_2016_013.ohapclient13.CENTRAL_UNIT_URL";
     private final static String DEVICE_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.DEVICE_ID";
-    private final static String CONTAINER_NAME = "fi.oulu.tol.esde_2016_013.ohapclient13.CONTAINER_NAME";
     private final static String CONTAINER_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.CONTAINER_ID";
 
-    // singleton central unit container
+    // central unit container
     private static CentralUnitConnection centralUnit = null;
+
+    // container of the intent
+    private Container container;
 
     // sensor for shake
     private SensorManager sensorManager = null;
     private Sensor accelerometer = null;
-    private static final float SHAKE_GEFORCE_LIMIT = 2.2F;
+    private static final double SHAKE_GEFORCE_LIMIT = 2.2F;
     private static final int SHAKE_DELAY_IN_BETWEEN = 10000;
     private long shakeTimestamp;
 
     // alert dialog box
-    AlertDialog alert = null;
     private boolean alertShown = false;
+    AlertDialog alert = null;
 
     // container listener
-    List<Integer> listeningContainerIds = new ArrayList<>();
+    List<Long> listeningContainerIds = new ArrayList<>();
+    ArrayList<Item> listItems = new ArrayList<>();
 
-    // log utilities
+    // log utilities place holder
     LogContainer logContainer = null;
+
+
+    public CentralUnitConnection getCentralUnit() {
+        if (centralUnit == null) {
+            try {
+                centralUnit = CentralUnitConnection.getInstance();
+            } catch (MalformedURLException e) {
+                Log.d(TAG, "getCentralUnit() Malformed URL exception: " + e.getMessage());
+            }
+        }
+        return centralUnit;
+    }
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,11 +132,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         // loads preferences (Central Unit URL, Auto-connect, etc.)
         loadPreferences();
 
-        // initializes list view
-        createListView();
-
-        // initialize connection to server
-        connect();
+//        // initializes list view
+//        createListView();
+//
+//        // initialize connection to server
+//        connect();
     }
 
 
@@ -129,8 +146,22 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         Log.d(TAG, "onResume() Called");
 
+//        // refresh central unit
+//        centralUnit = getCentralUnit();
+
+        Container container;
+
+//        if (getIntent().hasExtra(CONTAINER_ID)) {
+            long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
+            container = (Container) centralUnit.getItemById(containerId);
+            Log.d(TAG, "onCreate() Got intent extra, CONTAINER_ID = " + containerId);
+//        }
+
+        // set activity title
+        setTitle(container.getName());
+
         // create list view objects with list adapter
-        createListView();
+        createListView(container);
 
         // start networking
         connect();
@@ -204,29 +235,79 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onDestroy();
 //        centralUnit.sendLogout();
 
-        // note: before stop, containers must be stopped from listening
-        for (int id: listeningContainerIds) {
-            try {
-                Container container = (Container) centralUnit.getItemById(id);
-                container.stopListening();
-                Log.d(TAG, "onPause() Container " + id + "stopped listening");
-            } catch(Exception e) {
-                Log.d(TAG, "onPause() Unable to stop container " + id + "from listening!");
-            }
-        }
+        stopContainerListening();
 
         // stop networking
         centralUnit.stop();
-
 
         Log.d(TAG, "onDestroy() Called");
     }
 
 
+    /////////////////////////////////////////////////////////////////////////////////////////////
+    // Other methods start below this line
+    /////////////////////////////////////////////////////////////////////////////////////////////
 
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    // User defined methods start below this line
-    /////////////////////////////////////////////////////////////////////////////////////////////
+    private void createListView(final Container container) {
+        try {
+            // Create ListAdapter and set it to ListView
+            ListView listView = (ListView) findViewById(R.id.listView);
+            listView.setAdapter(new ContainerListAdapter(container));
+
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    // list view item onclick callback
+
+                    Log.d(TAG, "createListView() Position = " + position + ", id = " + container.getItemByIndex(position).getId() + ", container = " + container.getItemByIndex(position).getName() );
+
+                    Intent intent;
+
+                    if (container.getItemByIndex(position) instanceof Container) {
+
+                        // selected item is container, launch ContainerActivity
+                        intent = new Intent(getApplicationContext(), ContainerActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+                        intent.putExtra(CONTAINER_ID, container.getItemByIndex(position).getId());
+
+                    } else {
+
+                        Log.d(TAG, "position = " + position + ", device = " + container.getItemByIndex(position).getName() );
+
+                        // select item is device, launch DeviceActivity
+                        intent = new Intent(ContainerActivity.this, DeviceActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                        intent.putExtra(CENTRAL_UNIT_URL, centralUnit.getURL().toString() );
+                        intent.putExtra(DEVICE_ID, container.getItemByIndex(position).getId() );
+                    }
+
+//                    if (centralUnit.getItemByIndex(position) instanceof Container) {
+//                        // if selected item is container, launch ContainerActivity
+//                        intent = new Intent(getApplicationContext(), ContainerActivity.class);
+////                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+//                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                        intent.putExtra(CONTAINER_NAME, centralUnit.getItemByIndex(position+1).getName() );
+//                        intent.putExtra(CONTAINER_ID, 1);
+//
+//                    } else {
+//                        // if select item is not container, launch DeviceActivity
+//                        intent = new Intent(ContainerActivity.this, DeviceActivity.class);
+//                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+//                        intent.putExtra(CENTRAL_UNIT_URL, centralUnit.getURL().toString() );
+//                        intent.putExtra(DEVICE_ID, position );
+//                    }
+                    getApplicationContext().startActivity(intent);
+                }
+            });
+
+        } catch (Exception e) {
+            Log.e(TAG, "onCreate() Unable to create ListView / Launch intent: " + e.getMessage());
+        }
+    }
+
 
     private void loadPreferences() {
         // Load user default preferences on activity start
@@ -303,11 +384,15 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             alertDialogMessageOk(ttl, msg, "OK");
 
             // stop networking
-            // TODO Is stopping networking necessary or should the connection be left as it is?
-            centralUnit.stop();
+            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
         }
     }
 
+    private void stop() {
+        stopContainerListening();
+        destroyItems();
+        centralUnit.stop();
+    }
 
     private void reconnect() {
         // Handle re-connect request
@@ -315,40 +400,32 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         centralUnit.reconnect(this);
     }
 
+    private void destroyItems() {
+        // removes all items/containers from central unit
+        for (Item item: listItems) {
+            item.destroy();
+        }
+    }
 
-    private void createListView() {
-        try {
-            // Create ListAdapter and set it to ListView
-            ListView listView = (ListView) findViewById(R.id.listView);
-            listView.setAdapter(new ContainerListAdapter(centralUnit));
 
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    // list view item onclick callback
+    private void stopContainerListening() {
+        // note: before stop, containers must be stopped from listening
 
-                Intent intent;
-
-                if (centralUnit.getItemByIndex(position) instanceof Container) {
-                    // if selected item is container, launch ContainerActivity
-                    intent = new Intent(ContainerActivity.this, ContainerActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    intent.putExtra(CONTAINER_NAME, centralUnit.getItemByIndex(position).getName());
-                    intent.putExtra(CONTAINER_ID, position);
-
-                } else {
-                    // if select item is not container, launch DeviceActivity
-                    intent = new Intent(ContainerActivity.this, DeviceActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    intent.putExtra(CENTRAL_UNIT_URL, centralUnit.getURL().toString());
-                    intent.putExtra(DEVICE_ID, position);
+        for (long id: listeningContainerIds) {
+            try {
+                Container container = (Container) centralUnit.getItemById(id);
+                if (container.isListening()) {
+                    container.stopListening();
+                    Log.d(TAG, "stopContainerListening() Container " + id + " stopped listening");
                 }
-                startActivity(intent);
-                }
-            });
+            } catch(Exception e) {
+                Log.d(TAG, "stopContainerListening() Unable to stop container " + id + "from listening!");
+            }
+        }
 
-        } catch (Exception e) {
-            Log.e(TAG, "onCreate() Unable to create ListView / Launch intent: " + e.getMessage());
+        if (centralUnit.isListening()) {
+            centralUnit.stopListening();
+            Log.d(TAG, "stopContainerListening() Central unit stopped listening");
         }
     }
 
@@ -380,14 +457,15 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     public void onSensorChanged(SensorEvent event) {
         // get the magnitude of acceleration in 3 degrees of freedom (XYZ)
         // and determine total g-force for all axial directions
-        float gX = event.values[0] / SensorManager.GRAVITY_EARTH;
-        float gY = event.values[1] / SensorManager.GRAVITY_EARTH;
-        float gZ = event.values[2] / SensorManager.GRAVITY_EARTH;
+
+        double gX = event.values[0] / SensorManager.GRAVITY_EARTH;
+        double gY = event.values[1] / SensorManager.GRAVITY_EARTH;
+        double gZ = event.values[2] / SensorManager.GRAVITY_EARTH;
 
         // calculate total g-force (1g = 9.82m/s2)
-        float gForce = FloatMath.sqrt(gX * gX + gY * gY + gZ * gZ);
+        double totalGeForce = Math.sqrt(gX * gX + gY * gY + gZ * gZ);
 
-        if (gForce > SHAKE_GEFORCE_LIMIT) {
+        if (totalGeForce > SHAKE_GEFORCE_LIMIT) {
             // if shake speed is higher than threshold
 
             // get current system time in ms
@@ -431,37 +509,31 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         alertShown = true;
     }
 
+    public void alertDialogCustom(String title, String message, String... buttonText) {
+        // Pop alert dialog box with 1 button
 
-    @Override
-    public void handleActivityResponse(String messageAction) {
-        // handle connection error message sent from the container object
+        final Builder alertBuilder = new Builder(this); // alert dialog box
 
-        // TODO change error message to enum types
-
-        Log.d(TAG, "handleActivityResponse() New message action received: " + messageAction);
-
-        String ttl = "Connection error";
-        String msg;
-
-        if (messageAction.equals("No connection")) {
-//            if (!connecting) {
-                msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort() + " after " + centralUnit.getRetryAttempts() + " retries";
-                alertDialogMessageOk(ttl, msg, "OK");
-//            }
-        } else if (messageAction.equals("Connection closed")) {
-            msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
-            alertDialogMessageOk(ttl, msg, "OK");
-            connect();
-        } else if (messageAction.equals("Connected")){
-            msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
-            Toast.makeText(this, msg, Toast.LENGTH_LONG);
-        } else {
-            msg = "Unhandled connection message received: " + messageAction;
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT);
+        if (alertShown) {
+            // dismiss the alert dialog if already visible
+            alert.cancel();
+            alertShown = false;
         }
 
-    }
+        alertBuilder.setTitle(title);
+//        alertBuilder.setMessage(message);
 
+        alertBuilder.setItems(buttonText,
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "Clicked " + which, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        alert = alertBuilder.create();
+        alert.show();
+        alertShown = true;
+    }
 
     @Override
     public void handleMessageResponse(IncomingMessage incomingMessage) {
@@ -509,70 +581,72 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             String decimalUnit;
             String decimalAbbreviation;
 
-            Device newDevice = null;
+            Device device = null;
             MessageLog messageLog = null;
             String msg = "";
-            String messageType = "";
+            String msgTypeText = "";
 
             msgType = incomingMessage.integer8(); // get message type
             switch (msgType) {
 
                 case 0x01:
                     // handle error message (=server logout identifier)
-                    messageType = "message-type-logout";
+                    msgTypeText = "message-type-logout";
 
                     logoutErrorMsg = incomingMessage.text();
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "logout-error-text " + logoutErrorMsg;
 
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
+                    Log.e(TAG, "handleMessageResponse() Error received from server: " + logoutErrorMsg);
 
+                    // inform user of the error with alert dialog
                     alertDialogMessageOk("Server error message", logoutErrorMsg, "OK");
-
-                    Log.e(TAG, "handleMessageResponse() Error received from server: " + logoutErrorMsg );
 
                     break;
 
                 case 0x02:
                     // handle message type ping
-                    messageType = "message-type-ping";
+                    msgTypeText = "message-type-ping";
 
                     pingIdentifier = incomingMessage.integer32();
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "ping-identifier: " + pingIdentifier + "\n";
 
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
 
                     // send pong and notify user
                     centralUnit.sendPing();
+
+                    // inform user
                     Toast.makeText(this, "Server ping", Toast.LENGTH_SHORT).show();
 
                     break;
 
                 case 0x03:
                     // handle message type pong
-                    messageType = "message-type-pong";
+                    msgTypeText = "message-type-pong";
 
                     // calculate latency using ping message
                     pingIdentifier = incomingMessage.integer32();
                     long latencyMs = (SystemClock.uptimeMillis()-pingIdentifier);
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "ping-identifier: " + pingIdentifier + "\n";
 
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
-
-                    Toast.makeText(this, "Latency: " + latencyMs + "ms", Toast.LENGTH_SHORT).show();
-
                     Log.i(TAG, "handleMessageResponse() Ping reply received from " + centralUnit.getURL().toString() + msg);
+
+                    // inform user
+                    Toast.makeText(this, "Latency: " + latencyMs + "ms", Toast.LENGTH_SHORT).show();
 
                     break;
 
                 case 0x04:
                     // handle message type decimal sensor
-                    messageType = "message-type-decimal-sensor";
+                    msgTypeText = "message-type-decimal-sensor";
 
                     itemIdentifier = incomingMessage.integer32();
                     itemDecimalValue = incomingMessage.decimal64();
@@ -585,7 +659,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     decimalUnit= incomingMessage.text();
                     decimalAbbreviation= incomingMessage.text();
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "item-identifier: " + itemIdentifier + "\n";
                     msg += "decimal-value: " + itemDecimalValue + "\n";
                     msg += "item-data-parent-identifier: " + itemDataParentIdentifier + "\n";
@@ -600,44 +674,53 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
 
                     try {
-                        // get parent container id
+                        // get parent container
                         Container container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
-                        // create new device
-                        newDevice = new Device(container, itemIdentifier, Device.Type.SENSOR, Device.ValueType.DECIMAL);
-                        newDevice.setDecimalValue(itemDecimalValue);
-                        newDevice.setMinMaxValues(decimalMin, decimalMax);
-                        newDevice.setUnit(decimalUnit, decimalAbbreviation);
-                        newDevice.setName(itemDataName);
-                        newDevice.setDescription(itemDataDescription);
+                        // create new decimal sensor device
+                        device = new Device(container, itemIdentifier, Device.Type.SENSOR, Device.ValueType.DECIMAL);
+                        device.setDecimalValue(itemDecimalValue);
+                        device.setMinMaxValues(decimalMin, decimalMax);
+                        device.setUnit(decimalUnit, decimalAbbreviation);
+                        device.setName(itemDataName);
+                        device.setDescription(itemDataDescription);
 
-                        Log.i(TAG, "handleMessageResponse() Device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
+                        // add item to placeholder
+                        listItems.add(device);
+
+                        Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
 
                     } catch (Exception e) {
                         Log.e(TAG, "handleMessageResponse() Unable to create device: " + e.getMessage());
                     }
 
                     break;
+
                 case 0x05:
-                    messageType = "message-type-decimal-actuator";
+                    msgTypeText = "message-type-decimal-actuator";
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
 
                     Log.i(TAG, "handleMessageResponse() " + msg);
+
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+
                     break;
-                case 0x06:
-                    messageType = "message-type-binary-sensor";
 
-                    msg = messageType + "\n";
+                case 0x06:
+                    msgTypeText = "message-type-binary-sensor";
+
+                    msg = msgTypeText + "\n";
 
                     Log.i(TAG, "handleMessageResponse() " + msg);
+
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+
                     break;
 
                 case 0x07:
                     // handle message type binary actuator
-                    messageType = "message-type-binary-actuator";
+                    msgTypeText = "message-type-binary-actuator";
 
                     itemIdentifier = incomingMessage.integer32();
                     itemBinaryValue = incomingMessage.binary8();
@@ -646,7 +729,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     itemDataDescription = incomingMessage.text();
                     itemDataInternal = incomingMessage.binary8();
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "item-identifier: " + itemIdentifier + "\n";
                     msg += "binary-value: " + itemBinaryValue + "\n";
                     msg += "item-data-parent-identifier: " + itemDataParentIdentifier + "\n";
@@ -657,16 +740,19 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
 
                     try {
-                        // get parent container id
+                        // get parent container
                         Container container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                         // create new binary actuator
-                        newDevice = new Device(container, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.BINARY);
-                        newDevice.setBinaryValue(itemBinaryValue);
-                        newDevice.setName(itemDataName);
-                        newDevice.setDescription(itemDataDescription);
+                        device = new Device(container, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.BINARY);
+                        device.setBinaryValue(itemBinaryValue);
+                        device.setName(itemDataName);
+                        device.setDescription(itemDataDescription);
 
-                        Log.i(TAG, "handleMessageResponse() Device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
+                        // add item to placeholder
+                        listItems.add(device);
+
+                        Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
 
                     } catch (Exception e) {
                         Log.e(TAG, "handleMessageResponse() Unable to create device: " + e.getMessage());
@@ -676,7 +762,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                 case 0x08:
                     // handle message type container
-                    messageType = "message-type-container";
+                    msgTypeText = "message-type-container";
 
                     itemIdentifier = incomingMessage.integer32();
                     itemDataParentIdentifier = incomingMessage.integer32();
@@ -684,7 +770,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     itemDataDescription = incomingMessage.text();
                     itemDataInternal = incomingMessage.binary8();
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
                     msg += "item-identifier: " + itemIdentifier + "\n";
                     msg += "item-data-parent-identifier: " + itemDataParentIdentifier + "\n";
                     msg += "item-data-name: " + itemDataName + "\n";
@@ -694,79 +780,170 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
 
                     try {
+                        // set container properties
+
                         if (itemIdentifier == 0) {
                             // update central unit with the information received
+                            if (centralUnit.getId() == -1) {
+                                centralUnit = getCentralUnit();
+                                Log.d(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
+                            }
+
                             centralUnit.setName(itemDataName);
                             centralUnit.setDescription(itemDataDescription);
-                            // TODO How to handle listening?
-//                            centralUnit.startListening();
-                            Log.i(TAG, "handleMessageResponse() Central unit updated");
+                            Log.i(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
+
+                            // send listening start to server
+                            centralUnit.sendListeningStart(centralUnit);
 
                         } else {
+                            Container c = (Container) centralUnit.getItemById(itemIdentifier);
+                            if (c != null)
+                                c.startListening();
+
                             // create new container with provided data
                             Container container = new Container(centralUnit, itemIdentifier);
                             container.setName(itemDataName);
                             container.setDescription(itemDataDescription);
+
+                            // add item to placeholder
+                            listItems.add(container);
+
+                            // add container to listeners and send listening start
                             container.startListening();
-                            Log.i(TAG, "handleMessageResponse() New container " + itemIdentifier + " added to parent " + itemDataParentIdentifier);
+                            listeningContainerIds.add(container.getId());
+
+                            Log.i(TAG, "handleMessageResponse() New container: " + container.getId() + " added to parent " + container.getParent().getId());
                         }
+
                     } catch (Exception e) {
                         Log.e(TAG, "handleMessageResponse() Unable to create new container: " + e.getMessage());
                     }
+
                     break;
+
                 case 0x09:
-                    messageType = "message-type-decimal-changed";
+                    // handle decimal value changed
 
-                    msg = messageType + "\n";
+                    msgTypeText = "message-type-decimal-changed";
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    itemIdentifier = incomingMessage.integer32();
+                    itemDecimalValue = incomingMessage.decimal64();
+
+                    msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+                    msg += "item-decimal-value: " + itemDecimalValue + "\n";
+
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
+
+                    try {
+                        // set properties
+                        device = (Device) centralUnit.getItemById(itemIdentifier);
+                        device.setDecimalValue(itemDecimalValue);
+                        Log.i(TAG, "handleMessageResponse() Device " + device.getId() + " changed decimal value = " + device.getDecimalValue());
+                    } catch (Exception e){
+                        Log.e(TAG, "handleMessageResponse() Unable to set device " + device.getId() + " value, reason: " + e.getMessage());
+                    }
                     break;
+
                 case 0x0a:
-                    messageType = "message-type-binary-changed";
+                    // handle binary value changed
+                    msgTypeText = "message-type-binary-changed";
 
-                    msg = messageType + "\n";
+                    itemIdentifier = incomingMessage.integer32();
+                    itemBinaryValue = incomingMessage.binary8();
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+                    msg += "item-binary-value: " + itemBinaryValue + "\n";
+
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
+
+                    try {
+                        // set properties
+                        device = (Device) centralUnit.getItemById(itemIdentifier);
+                        device.setBinaryValue(itemBinaryValue);
+                        Log.i(TAG, "handleMessageResponse() Device " + device.getId() + " changed binary value = " + device.getBinaryValue());
+                    } catch (Exception e){
+                        Log.e(TAG, "handleMessageResponse() Unable to set device " + device.getId() + " value, reason: " + e.getMessage());
+                    }
                     break;
                 case 0x0b:
-                    messageType = "message-type-item-removed";
+                    msgTypeText = "message-type-item-removed";
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
 
                     Log.i(TAG, "handleMessageResponse() " + msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                     break;
                 case 0x0c:
-                    messageType = "message-type-container";
-                    msg = "\n";
-                    msg += "message-type-listening-start";
+                    msgTypeText = "message-type-listening-start";
+
+                    msg = msgTypeText + "\n";
+
                     Log.i(TAG, "handleMessageResponse() " + msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                     break;
                 case 0x0d:
-                    messageType = "message-type-listening-stop";
+                    msgTypeText = "message-type-listening-stop";
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
 
                     Log.i(TAG, "handleMessageResponse() " + msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                     break;
                 default:
-                    messageType = "unsupported-message-type";
+                    msgTypeText = "unsupported-message-type";
 
-                    msg = messageType + "\n";
+                    msg = msgTypeText + "\n";
 
                     alertDialogMessageOk("Message error", "Unsupported message-type \"" + msgType + "\"", "OK");
                     break;
             }
-            // forward the message to logging facility
-            messageLog = new MessageLog(logContainer, msg, messageType);
+
+            // forward the message to message logging facility
+            new MessageLog(logContainer, msg, msgTypeText);
             Log.d(TAG, "handleMessageResponse() Log item count " + logContainer.getItemCount());
 
         } else {
             Log.wtf(TAG, "handlePingResponse() Has been called with null message type!");
+        }
+    }
+
+    @Override
+    public void handleActivityResponse(String messageAction) {
+        // handle connection error message sent from the container object
+
+        // TODO change error message to enum types
+
+        Log.d(TAG, "handleActivityResponse() New message action received: " + messageAction);
+
+        String ttl = "Connection error";
+        String msg;
+
+        if (messageAction.equals("No connection")) {
+//            if (!connecting) {
+            msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
+            alertDialogMessageOk(ttl, msg, "OK");
+//            }
+
+        } else if (messageAction.equals("Connection closed")) {
+            msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
+            alertDialogMessageOk(ttl, msg, "OK");
+            stop();
+            connect();
+
+        } else if (messageAction.equals("Connected")){
+            msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+
+        } else if (messageAction.equals("Reconnecting")){
+            msg = "Reconnecting...";
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+
+        } else {
+            msg = "Unhandled connection message received: " + messageAction;
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         }
     }
 

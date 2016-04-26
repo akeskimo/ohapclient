@@ -18,8 +18,8 @@
     <string name="device_desc">No device id</string>
     <string name="centralunit_name">OHAP Test Server</string>
     <string name="container_hierarchy">Offline</string>
-    <string name="switch_text">Change binary value</string>
-    <string name="seekbar_text">Change decimal value</string>
+    <string name="switch_text">binary value</string>
+    <string name="seekbar_text">decimal value</string>
     <string name="seekbar_maxvalue">10000</string>
 
     <!-- Preferences activity -->
@@ -53,7 +53,7 @@
     <string name="menu_help">Help</string>
 
     <!-- Log activity -->
-    <string name="title_log_activity">Logging</string>
+    <string name="title_log_activity">Server Log</string>
 
     <!-- Message activity -->
     <string name="title_message_activity">Message</string>

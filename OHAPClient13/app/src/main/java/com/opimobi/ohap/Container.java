@@ -1,5 +1,7 @@
 package com.opimobi.ohap;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -138,6 +140,7 @@ public class Container extends Item {
                     item.destroy();
             }
         }
+        Log.d(getClass().getSimpleName(), "stopListening() listeners = " + listeners);
     }
 
     /**
