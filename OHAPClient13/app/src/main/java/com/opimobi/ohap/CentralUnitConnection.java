@@ -245,7 +245,6 @@ public class CentralUnitConnection extends CentralUnit {
                     if (dataCame) {
                         incomingHandler.post(new IncomingMessageAction(msg));
                     }
-
                 }
             }
             close(incomingHandler);
@@ -286,24 +285,21 @@ public class CentralUnitConnection extends CentralUnit {
                 } catch (IOException e) {
                     // If connection failed -> update flag, log and post error to UI
 
-                    Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout/1000 + " seconds." );
+                    Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout / 1000 + " seconds.");
 
-                    if (attempt == 1) {
-                        // send error message to connection observer
-
-                        if (observer != null && incomingHandler != null) {
-//                            if (attempt == 3) {
-                                String errorMsg = "No connection";
-                                incomingHandler.post(new ActivityAction(errorMsg));
+                    if (observer != null && incomingHandler != null) {
+                        if (attempt == 1) {
+                            // send error message to connection observer
+                            String errorMsg = "No connection";
+                            incomingHandler.post(new ActivityAction(errorMsg));
+                        } else if (attempt > 1) {
+                            incomingHandler.post(new ActivityAction("Reconnecting"));
                         }
-                    } else if (attempt > 1) {
-                        incomingHandler.post(new ActivityAction("Reconnecting"));
                     }
-
                     try {
                         incomingThread.sleep(timeout);
-                    } catch (InterruptedException e1) {
-                        Log.e(TAG, "connect() incomingThread sleep interrupted: " + e.getMessage());
+                    } catch (InterruptedException ie) {
+                        Log.e(TAG, "connect() incomingThread sleep interrupted again: " + ie.getMessage());
                     }
                 }
             }
@@ -322,7 +318,9 @@ public class CentralUnitConnection extends CentralUnit {
                 while(!outgoingMessageActionFinished) {}
 
                 try {
-                    socket.close();
+                    if (socket != null) {
+                        socket.close();
+                    }
                     if (observer != null && incomingHandler != null) {
                         // notify observers
                         String errorMsg = "Connection closed";
@@ -374,11 +372,12 @@ public class CentralUnitConnection extends CentralUnit {
 
     public void start(ConnectionObserver observer) {
         this.observer = observer;
+        Log.d(TAG, "start() Number of listeners = " + nListeners);
         listeningStateChanged(this, true);
     }
 
     public void stop() {
-        this.observer = null;
+//        this.observer = null;
         listeningStateChanged(this, false);
     }
 
@@ -394,6 +393,8 @@ public class CentralUnitConnection extends CentralUnit {
     public void stopNetworking() {
 
         Log.d(TAG, "stopNetworking() Called");
+
+        sendLogout();
 
         setRunning(false);
 
@@ -740,5 +741,9 @@ public class CentralUnitConnection extends CentralUnit {
                 ", valueType: " + newDevice.getValueType() );
 
         return newDevice; // return device initialized with dummy parameters
+    }
+
+    public void resetListeners() {
+        nListeners = 0;
     }
 }

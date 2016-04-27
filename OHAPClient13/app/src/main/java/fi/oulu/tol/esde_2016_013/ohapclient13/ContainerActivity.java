@@ -233,14 +233,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     protected void onDestroy() {
         super.onDestroy();
-//        centralUnit.sendLogout();
-
-        stopContainerListening();
-
-        // stop networking
-        centralUnit.stop();
-
         Log.d(TAG, "onDestroy() Called");
+
+//        stop();
     }
 
 
@@ -378,13 +373,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         } else {
             // auto-connect feature is switched off
 
+            // stop networking
+            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
+
             // display a dialog to inform user that auto connection is switched off
             String ttl = "Auto-connect is off";
             String msg = "You may switch auto-connection on in 'Settings'-menu or shake the device to force reconnect";
             alertDialogMessageOk(ttl, msg, "OK");
-
-            // stop networking
-            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
         }
     }
 
@@ -422,6 +417,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                 Log.d(TAG, "stopContainerListening() Unable to stop container " + id + "from listening!");
             }
         }
+
+        centralUnit.resetListeners(); // make sure that number of containers is empty
 
         if (centralUnit.isListening()) {
             centralUnit.stopListening();
@@ -582,6 +579,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             String decimalAbbreviation;
 
             Device device = null;
+            Container container = null;
             MessageLog messageLog = null;
             String msg = "";
             String msgTypeText = "";
@@ -675,7 +673,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // get parent container
-                        Container container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+                        container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                         // create new decimal sensor device
                         device = new Device(container, itemIdentifier, Device.Type.SENSOR, Device.ValueType.DECIMAL);
@@ -741,7 +739,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // get parent container
-                        Container container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+                        container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                         // create new binary actuator
                         device = new Device(container, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.BINARY);
@@ -797,23 +795,30 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                             centralUnit.sendListeningStart(centralUnit);
 
                         } else {
-                            Container c = (Container) centralUnit.getItemById(itemIdentifier);
-                            if (c != null)
-                                c.startListening();
+                            container = (Container) centralUnit.getItemById(itemIdentifier);
+                            if (container != null) {
+                                container.startListening();
+//                                listeningContainerIds.add(container.getId());
+                            } else {
 
-                            // create new container with provided data
-                            Container container = new Container(centralUnit, itemIdentifier);
-                            container.setName(itemDataName);
-                            container.setDescription(itemDataDescription);
+                                // create new container with provided data
+                                container = new Container(centralUnit, itemIdentifier);
+                                container.setName(itemDataName);
+                                container.setDescription(itemDataDescription);
 
-                            // add item to placeholder
-                            listItems.add(container);
+                                // start listening
+                                container.startListening();
+                                listeningContainerIds.add(container.getId());
 
-                            // add container to listeners and send listening start
-                            container.startListening();
-                            listeningContainerIds.add(container.getId());
+                                // add to item placeholder
+                                listItems.add(container);
 
-                            Log.i(TAG, "handleMessageResponse() New container: " + container.getId() + " added to parent " + container.getParent().getId());
+                                // add container to listeners and send listening start
+                                //                            container.startListening();
+                                //                            listeningContainerIds.add(container.getId());
+
+                                Log.i(TAG, "handleMessageResponse() New container: " + container.getId() + " added to parent " + container.getParent().getId());
+                            }
                         }
 
                     } catch (Exception e) {
@@ -867,31 +872,78 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     } catch (Exception e){
                         Log.e(TAG, "handleMessageResponse() Unable to set device " + device.getId() + " value, reason: " + e.getMessage());
                     }
+
                     break;
+
                 case 0x0b:
+                    // item removed message
                     msgTypeText = "message-type-item-removed";
 
-                    msg = msgTypeText + "\n";
+                    itemIdentifier = incomingMessage.integer32();
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
+
+                    try {
+                        // remove item
+                        Item item = centralUnit.getItemById(itemIdentifier);
+                        Log.i(TAG, "handleMessageResponse() Item " + item.getId() + " removed from container " + item.getParent().getId() );
+                        item.destroy();
+                    } catch (Exception e){
+                        Log.e(TAG, "handleMessageResponse() Unable to remove device " + device.getId() + ", reason: " + e.getMessage());
+                    }
+
                     break;
+
                 case 0x0c:
+                    // container start listening
                     msgTypeText = "message-type-listening-start";
 
-                    msg = msgTypeText + "\n";
+                    itemIdentifier = incomingMessage.integer32();
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
+
+                    try {
+                        // add listener
+                        container = (Container) centralUnit.getItemById(itemIdentifier);
+                        container.startListening();
+                        listeningContainerIds.add(container.getId());
+                        Log.i(TAG, "handleMessageResponse() Container " + container.getId() + " started listening" );
+
+                    } catch (Exception e){
+                        Log.e(TAG, "handleMessageResponse() Container " + container.getId() + " unable to start listening, reason: " + e.getMessage());
+                    }
+
                     break;
+
                 case 0x0d:
                     msgTypeText = "message-type-listening-stop";
 
-                    msg = msgTypeText + "\n";
+                    itemIdentifier = incomingMessage.integer32();
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
+
+                    try {
+                        // add listener
+                        container = (Container) centralUnit.getItemById(itemIdentifier);
+                        container.stopListening();
+                        listeningContainerIds.remove(container.getId());
+                        Log.i(TAG, "handleMessageResponse() Container " + container.getId() + " stopped listening" );
+
+                    } catch (Exception e){
+                        Log.e(TAG, "handleMessageResponse() Container " + container.getId() + " unable to stop listening, reason: " + e.getMessage());
+                    }
+
                     break;
+
                 default:
                     msgTypeText = "unsupported-message-type";
 
@@ -925,12 +977,17 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 //            if (!connecting) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
+            stopContainerListening();
+            destroyItems();
+            connect();
 //            }
 
         } else if (messageAction.equals("Connection closed")) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
-            stop();
+//            stop();
+            stopContainerListening();
+            destroyItems();
             connect();
 
         } else if (messageAction.equals("Connected")){
@@ -938,7 +995,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
 
         } else if (messageAction.equals("Reconnecting")){
-            msg = "Reconnecting...";
+            msg = "Connecting to server...";
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
 
         } else {
@@ -946,6 +1003,4 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         }
     }
-
-
 }
