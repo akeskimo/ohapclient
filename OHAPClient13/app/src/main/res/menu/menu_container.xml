@@ -5,17 +5,13 @@
 
 
     <item
-        android:id="@+id/menu_log"
+        android:id="@+id/menu_main"
         android:layout_centerVertical="true"
-        android:layout_width="@dimen/menu_ic_width"
-        android:layout_height="@dimen/menu_ic_height"
-        android:layout_marginLeft="@dimen/menu_ic_marginLeft"
-        android:layout_marginRight="@dimen/menu_ic_marginRight"
-        android:layout_marginTop="@dimen/menu_ic_marginTop"
-        android:layout_marginBottom="@dimen/menu_ic_marginBottom"
-        android:title="@string/menu_log"
-        android:icon="@drawable/ic_house_list"
-        app:showAsAction="always" />
+        android:layout_width = "wrap_content"
+        android:layout_height = "wrap_content"
+        android:title="@string/menu_main"
+        app:showAsAction="always|withText"
+        android:icon="@drawable/ic_house_list" />
 
 
     <item
@@ -29,7 +25,7 @@
         android:layout_marginBottom="@dimen/menu_ic_marginBottom"
         android:title="@string/menu_ping"
         android:icon="@drawable/ic_ping"
-        app:showAsAction="always" />
+        app:showAsAction="always|withText" />
 
     <item
         android:id="@+id/menu_settings"
@@ -42,7 +38,7 @@
         android:layout_marginBottom="@dimen/menu_ic_marginBottom"
         android:title="@string/menu_settings"
         android:icon="@drawable/ic_settings"
-        app:showAsAction="always" />
+        app:showAsAction="always|withText" />
 
 
     <item
@@ -56,6 +52,6 @@
         android:layout_marginBottom="@dimen/menu_ic_marginBottom"
         android:title="@string/menu_help"
         android:icon="@drawable/ic_help"
-        app:showAsAction="always" />
+        app:showAsAction="always|withText" />
 
 </menu>

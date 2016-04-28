@@ -36,9 +36,9 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.opimobi.ohap.CentralUnit;
 import com.opimobi.ohap.CentralUnitConnection;
 import com.opimobi.ohap.ConnectionObserver;
 import com.opimobi.ohap.Container;
@@ -62,7 +62,6 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     private final String TAG = this.getClass().getSimpleName();
 
     // intent extras
-    private final static String CENTRAL_UNIT_URL = "fi.oulu.tol.esde_2016_013.ohapclient13.CENTRAL_UNIT_URL";
     private final static String DEVICE_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.DEVICE_ID";
     private final static String CONTAINER_ID = "fi.oulu.tol.esde_2016_013.ohapclient13.CONTAINER_ID";
 
@@ -90,18 +89,56 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     // log utilities place holder
     LogContainer logContainer = null;
 
+    // preference change variable
+    private boolean preferenceChanged = false;
 
-    public CentralUnitConnection getCentralUnit() {
-        if (centralUnit == null) {
-            try {
-                centralUnit = CentralUnitConnection.getInstance();
-            } catch (MalformedURLException e) {
-                Log.d(TAG, "getCentralUnit() Malformed URL exception: " + e.getMessage());
+    // activity state
+    private boolean active;
+
+    // display headers
+    TextView textViewContainerName;
+    TextView textViewUrlAddress;
+    TextView textViewStatus;
+    private static int runnableCtr = 0;
+
+
+    // timer thread for querying connection status
+    private Thread timer = new Thread() {
+
+        // sleep time between polls
+        private int sleepTime = 500;
+
+        public void run() {
+
+            Log.d(TAG, "timer().run() Started");
+
+            while(true) {
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    Log.d(TAG, "TimerThread.run() Interrupted: " + e.getMessage());
+                }
+
+                runnableCtr++;
+                runOnUiThread(updateViewRunnable);
             }
         }
-        return centralUnit;
-    }
+    };
 
+
+    // runnable object to update the connection status text view widgets
+    private Runnable updateViewRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            // update container activity headers (text views)
+            textViewContainerName.setText(container.getName());
+            textViewUrlAddress.setText(centralUnit.getURL().toString());
+            textViewStatus.setText(centralUnit.getConnectionStatus().toString());
+
+//            Log.d(TAG, "Container name = " + container.getName() + "\nURL = " + centralUnit.getURL() + "\nStatus = " + centralUnit.getConnectionStatus().toString());
+        }
+    };
 
     /////////////////////////////////////////////////////////////////////////////////////////////
     // Android activity life cycle methods start below this line
@@ -113,30 +150,26 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_container);
 
+        // app title
+        setTitle("OHAPClient13");
+
         // log utilities
         logContainer = LogContainer.getInstance();
+
+        textViewContainerName = (TextView) findViewById(R.id.textViewContainerName);
+        textViewUrlAddress =  (TextView) findViewById(R.id.textViewUrlAddress);
+        textViewStatus = (TextView) findViewById(R.id.textViewConnectionStatus);
 
         // start sensor manager and get reference to accelerometer for shake detection
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE); // sensor system mgr
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER); // acc sensor
 
-        try {
-            // getting the instance of CentralUnit
-            centralUnit = CentralUnitConnection.getInstance();
-            Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
-
-        } catch (MalformedURLException e) {
-            Log.e(TAG, "onCreate() URL is invalid: " + e.getMessage());
-        }
+        // getting the instance of CentralUnit
+        centralUnit = CentralUnitConnection.getInstance();
+        Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
 
         // loads preferences (Central Unit URL, Auto-connect, etc.)
         loadPreferences();
-
-//        // initializes list view
-//        createListView();
-//
-//        // initialize connection to server
-//        connect();
     }
 
 
@@ -146,28 +179,34 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         Log.d(TAG, "onResume() Called");
 
-//        // refresh central unit
-//        centralUnit = getCentralUnit();
-
-        Container container;
-
-//        if (getIntent().hasExtra(CONTAINER_ID)) {
-            long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
-            container = (Container) centralUnit.getItemById(containerId);
-            Log.d(TAG, "onCreate() Got intent extra, CONTAINER_ID = " + containerId);
-//        }
+        // get container passed to the activity
+        long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
+        Log.d(TAG, "onCreate() Got intent extra, CONTAINER_ID = " + containerId);
+        container = (Container) centralUnit.getItemById(containerId);
 
         // set activity title
-        setTitle(container.getName());
+//        if (containerId != 0)
+//            setTitle(container.getName());
+//        else
+//            setTitle(centralUnit.getName());
 
         // create list view objects with list adapter
-        createListView(container);
+        createListView();
 
         // start networking
         connect();
 
+        // start timer thread
+        if (!timer.isAlive())
+            timer.start();
+
         // register sensor listener
         sensorManager.registerListener(this, accelerometer, sensorManager.SENSOR_DELAY_NORMAL);
+
+        // set display headers
+        textViewContainerName.setText(centralUnit.getName());
+        textViewUrlAddress.setText(centralUnit.getURL().toString());
+        textViewStatus.setText(centralUnit.getConnectionStatus().toString());
     }
 
 
@@ -195,19 +234,24 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         // get clicked menu identifier
         int id = item.getItemId();
 
-        if (id == R.id.menu_log) {
-            Intent intent = new Intent(ContainerActivity.this, LogActivity.class);
+        if (id == R.id.menu_main) {
+            // return to main activity
+            Intent intent = new Intent(ContainerActivity.this, ContainerActivity.class);
             startActivity(intent);
+
         } else if (id == R.id.menu_ping) {
             // ping server
+
             if (centralUnit.isConnected())
                 centralUnit.sendPing();
             else
                 Toast.makeText(this, "Ping message not sent: No connection to server", Toast.LENGTH_SHORT).show();
+
         } else if (id == R.id.menu_settings) {
             // start preference activity
             Intent intent = new Intent(ContainerActivity.this, PreferencesActivity.class);
             startActivity(intent);
+
         } else if (id == R.id.menu_help) {
             // start helper activity
             Intent intent = new Intent(ContainerActivity.this, HelperActivity.class);
@@ -221,12 +265,14 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     public void onStart() {
         super.onStart();
+        active = true;
         Log.d(TAG, "onStart() Called");
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        active = false;
         Log.d(TAG, "onStop() Called");
     }
 
@@ -235,15 +281,23 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onDestroy();
         Log.d(TAG, "onDestroy() Called");
 
+//        // stop timer thread
+//        timer.interrupt();
+//        try {
+//            timer.join();
+//        } catch (InterruptedException e) {
+//            Log.e(TAG, "onDestroy() Unable to join timer thread: " + e.getMessage());
+//        }
+//        timer = null;
+
 //        stop();
     }
-
 
     /////////////////////////////////////////////////////////////////////////////////////////////
     // Other methods start below this line
     /////////////////////////////////////////////////////////////////////////////////////////////
 
-    private void createListView(final Container container) {
+    private void createListView() {
         try {
             // Create ListAdapter and set it to ListView
             ListView listView = (ListView) findViewById(R.id.listView);
@@ -260,7 +314,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     if (container.getItemByIndex(position) instanceof Container) {
 
-                        // selected item is container, launch ContainerActivity
+                        // selected item is container, launch container activity
                         intent = new Intent(getApplicationContext(), ContainerActivity.class);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 //                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
@@ -271,29 +325,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                         Log.d(TAG, "position = " + position + ", device = " + container.getItemByIndex(position).getName() );
 
-                        // select item is device, launch DeviceActivity
+                        // select item is device, launch device activity
                         intent = new Intent(ContainerActivity.this, DeviceActivity.class);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-                        intent.putExtra(CENTRAL_UNIT_URL, centralUnit.getURL().toString() );
                         intent.putExtra(DEVICE_ID, container.getItemByIndex(position).getId() );
                     }
 
-//                    if (centralUnit.getItemByIndex(position) instanceof Container) {
-//                        // if selected item is container, launch ContainerActivity
-//                        intent = new Intent(getApplicationContext(), ContainerActivity.class);
-////                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-//                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//                        intent.putExtra(CONTAINER_NAME, centralUnit.getItemByIndex(position+1).getName() );
-//                        intent.putExtra(CONTAINER_ID, 1);
-//
-//                    } else {
-//                        // if select item is not container, launch DeviceActivity
-//                        intent = new Intent(ContainerActivity.this, DeviceActivity.class);
-//                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-//                        intent.putExtra(CENTRAL_UNIT_URL, centralUnit.getURL().toString() );
-//                        intent.putExtra(DEVICE_ID, position );
-//                    }
                     getApplicationContext().startActivity(intent);
                 }
             });
@@ -305,49 +343,79 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
 
     private void loadPreferences() {
-        // Load user default preferences on activity start
+        // load user default preferences on activity start
 
+        // laoad shared preferences (settings stored in shared preference manager)
         SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(this);
-        String port_key, url_key, port_value, url_value, autoconnect_key;
+
+        String port_key;
+        String url_key;
+        String port_value;
+        String url_value;
+        String autoconnect_key;
         boolean autoConnect;
 
-        // load autoconnect settings
+        // preference keys
         autoconnect_key = getString(R.string.pref_autoconnect_key);
+        port_key = getString(R.string.pref_port_key);
+        url_key = getString(R.string.pref_url_key);
+
+        // load auto-connect setting
         try {
             autoConnect = shared.getBoolean(autoconnect_key,
                     Boolean.parseBoolean(getString(R.string.pref_autoconnect_default)));
         } catch (Exception e) {
-            Log.w(TAG, "loadPreferences() Unable to parse resource default value: " + getString(R.string.pref_autoconnect_default) + " to boolean. Forcing default value = true.");
-            autoConnect = shared.getBoolean(autoconnect_key, true);
+            Log.e(TAG, "loadPreferences() Unable to parse resource default value: " + getString(R.string.pref_autoconnect_default) + " to boolean. Forcing default value = true.");
+            autoConnect = true;
         }
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + autoconnect_key + ", value = " + autoConnect);
 
         // load port settings
-        port_key = getString(R.string.pref_port_key);
-        port_value = shared.getString( port_key, getString(R.string.pref_port_default));
+        port_value = shared.getString(port_key, getString(R.string.pref_port_default));
+
+        if (port_value.equals("") || port_value.equals("-1")) {
+            // if port is empty/invalid, use resource values
+            Log.i(TAG, "loadPreference() Shared preference port is empty: Loading from xml resource");
+            port_value = getString(R.string.pref_port_default);
+            SharedPreferences.Editor editor = shared.edit();
+            editor.putString(port_key, port_value);
+            editor.commit();
+        }
+
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + port_key + ", value = " + port_value);
 
-        // load url settings
-        url_key = getString(R.string.pref_url_key);
+        // load url setting
         url_value = shared.getString( url_key, getString(R.string.pref_url_default));
+
+        if (url_value.equals("")) {
+            // if url is empty, use resource values
+            Log.i(TAG, "loadPreference() Shared preference url is empty: Loading from xml resource");
+            url_value = getString(R.string.pref_url_default);
+            SharedPreferences.Editor editor = shared.edit();
+            editor.putString(url_key, url_value);
+            editor.commit();
+        }
+
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + url_key + ", value = " + url_value);
 
+
+        // combine ip address with protocol and port
         String address = url_value + ":" + port_value + "/";
+
         try {
+            // set central unit with the url obtained from preferences
             centralUnit.setAutoConnect(autoConnect);
             centralUnit.initialize(new URL(address), this);
-//            centralUnit.setURL(new URL(address));
-            Log.i(TAG, "loadPreferences() CentralUnit set with new URL: " + address);
+
+            Log.i(TAG, "loadPreferences() CentralUnit initialized with URL: " + centralUnit.getURL());
         } catch (MalformedURLException e) {
-            Log.e(TAG, "loadPreferences() Unable to set CentralUnit URL address \"" + address + ", reason: " + e.getMessage());
-        } catch (Exception e) {
-            Log.e(TAG, "loadPreferences() Unhandled error occurred: " + e.getMessage() );
+            Log.e(TAG, "loadPreferences()Malformed url: \"" + address + "\", reason: " + e.getMessage());
         }
     }
 
 
     private void connect() {
-        // Handle connect request
+        // handle connect request
 
         Log.d(TAG, "connect() isAutoConnect() = " + centralUnit.isAutoConnect() + ", checkNetwork() = " + checkNetwork() + ", isRunning() = " + centralUnit.isRunning() + ", isConnected() = " + centralUnit.isConnected());
 
@@ -366,15 +434,18 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             } else {
                 // Raise alert dialog box, if the device is not connected to network
                 String ttl = "No network detected";
-                String msg = "Connect the device to WIFI or mobile network";
-                alertDialogMessageOk(ttl, msg, "Continue offline");
+                String msg = "Connect the device to WIFI or mobile network\n\nTry shaking the device to reconnect";
+                alertDialogMessageOk(ttl, msg, "OK");
             }
 
         } else {
             // auto-connect feature is switched off
 
             // stop networking
-            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
+            stopContainerListening();
+            destroyItems();
+//            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
+            centralUnit.stop();
 
             // display a dialog to inform user that auto connection is switched off
             String ttl = "Auto-connect is off";
@@ -384,19 +455,20 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     }
 
     private void stop() {
+        // handle stop request
         stopContainerListening();
         destroyItems();
         centralUnit.stop();
     }
 
     private void reconnect() {
-        // Handle re-connect request
+        // handle re-connect request
         Toast.makeText(this, "Reconnecting...", Toast.LENGTH_SHORT).show();
         centralUnit.reconnect(this);
     }
 
     private void destroyItems() {
-        // removes all items/containers from central unit
+        // removes all items and containers from central unit
         for (Item item: listItems) {
             item.destroy();
         }
@@ -404,7 +476,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
 
     private void stopContainerListening() {
-        // note: before stop, containers must be stopped from listening
+        // stops containers from listening
 
         for (long id: listeningContainerIds) {
             try {
@@ -476,7 +548,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             // store time stamp of last shake
             shakeTimestamp = timestamp;
 
-            // request reconnect to server
+            // request reconnect to server (sensor action)
             reconnect();
         }
     }
@@ -492,7 +564,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         final Builder alertBuilder = new Builder(this); // alert dialog box
 
         if (alertShown) {
-            // dismiss the alert dialog if already visible
+            // dismiss the alert dialog, in case it is visible
             alert.cancel();
             alertShown = false;
         }
@@ -502,12 +574,14 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         alertBuilder.setPositiveButton(buttonText, null);
 
         alert = alertBuilder.create();
-        alert.show();
-        alertShown = true;
+        if (active) {
+            alert.show();
+            alertShown = true;
+        }
     }
 
     public void alertDialogCustom(String title, String message, String... buttonText) {
-        // Pop alert dialog box with 1 button
+        // pop alert dialog box with 1 button
 
         final Builder alertBuilder = new Builder(this); // alert dialog box
 
@@ -534,7 +608,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
     @Override
     public void handleMessageResponse(IncomingMessage incomingMessage) {
-    // The receiving end of OHAP Protocol messages from tcp-ohap-server application
+    // The receiving end of OHAP Protocol messages from tcp-ohap-server
     // Protocol version:    0.3.1 (March 11, 2016)
     // Messages:            From server to client
     //
@@ -542,7 +616,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     // http://ohap.opimobi.com/ohap_specification_20160311.html (v0.3.1)
     //
     //
-    // Example:
+    // Protocol Message Example:
     //    message-type-binary-actuator      int8
     //    item-identifier                   int32
     //    binary-value                      boolean
@@ -558,7 +632,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     //    itemDataDescription = incomingMessage.text();
     //    itemDataInternal = incomingMessage.binary8();
 
-    // TODO move to separate class?
+    // TODO move to separate file?
 
 
         if (null != incomingMessage) {
@@ -635,7 +709,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     msg += "ping-identifier: " + pingIdentifier + "\n";
 
                     Log.i(TAG, "handleMessageResponse() \n" + msg);
-                    Log.i(TAG, "handleMessageResponse() Ping reply received from " + centralUnit.getURL().toString() + msg);
+                    Log.i(TAG, "handleMessageResponse() Ping reply received from " + centralUnit.getURL().toString());
 
                     // inform user
                     Toast.makeText(this, "Latency: " + latencyMs + "ms", Toast.LENGTH_SHORT).show();
@@ -783,11 +857,12 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                         if (itemIdentifier == 0) {
                             // update central unit with the information received
                             if (centralUnit.getId() == -1) {
-                                centralUnit = getCentralUnit();
+                                centralUnit = CentralUnitConnection.getInstance();
                                 Log.d(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
                             }
 
                             centralUnit.setName(itemDataName);
+//                            setTitle(centralUnit.getName()); // update app title
                             centralUnit.setDescription(itemDataDescription);
                             Log.i(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
 
@@ -954,7 +1029,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             }
 
             // forward the message to message logging facility
-            new MessageLog(logContainer, msg, msgTypeText);
+            new MessageLog(logContainer, msg, msgTypeText, "SERVER");
             Log.d(TAG, "handleMessageResponse() Log item count " + logContainer.getItemCount());
 
         } else {
@@ -975,7 +1050,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         if (messageAction.equals("No connection")) {
 //            if (!connecting) {
-            msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
+            msg = "Unable to connect to server\n" + centralUnit.getURL() + "\n\nCheck URL and port in settings";
             alertDialogMessageOk(ttl, msg, "OK");
             stopContainerListening();
             destroyItems();
@@ -992,6 +1067,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         } else if (messageAction.equals("Connected")){
             msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
+//            setTitle(centralUnit.getName());
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
 
         } else if (messageAction.equals("Reconnecting")){

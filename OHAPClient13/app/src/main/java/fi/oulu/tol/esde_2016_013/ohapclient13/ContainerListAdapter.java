@@ -92,19 +92,19 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
 
     @Override
     public int getCount() {
-        Log.d(TAG, "getCount() container.getItemCount() returned: " + container.getItemCount());
+//        Log.d(TAG, "getCount() container.getItemCount() returned: " + container.getItemCount());
         return container.getItemCount();
     }
 
     @Override
     public Object getItem(int position) {
-        Log.d(TAG, "getItem() container.getItem(position) returned: " + container.getItemByIndex(position) );
+//        Log.d(TAG, "getItem() container.getItem(position) returned: " + container.getItemByIndex(position) );
         return container.getItemByIndex(position);
     }
 
     @Override
     public long getItemId(int position) {
-        Log.d(TAG, "getItemId() container.getItemByIndex(position).getId() returned: " + container.getItemByIndex(position).getId() );
+//        Log.d(TAG, "getItemId() container.getItemByIndex(position).getId() returned: " + container.getItemByIndex(position).getId() );
         return container.getItemByIndex(position).getId();
     }
 

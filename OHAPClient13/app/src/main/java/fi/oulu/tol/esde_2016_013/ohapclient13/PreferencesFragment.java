@@ -14,6 +14,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
 
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.content.Intent;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.os.Bundle;
@@ -34,8 +35,9 @@ public class PreferencesFragment extends PreferenceFragment {
     private final String TAG = getClass().getSimpleName();
 
     private CentralUnitConnection centralUnit = null;
-    private String url_address, port_number;
-    AlertDialog alert = null;
+    private String url_address;
+    private String port_number;
+    private AlertDialog alert = null;
     private boolean alertShown = false;
 
     private boolean connectionPreferenceChanged = false;
@@ -46,56 +48,65 @@ public class PreferencesFragment extends PreferenceFragment {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
 
-        try {
-            centralUnit = CentralUnitConnection.getInstance();
-        } catch (MalformedURLException e) {
-            Log.e(TAG, "onCreate() Unable to intialize CentralUnit: " + e.getMessage());
-        }
+        // get central unit
+        centralUnit = CentralUnitConnection.getInstance();
 
         // get url from shared preferences and set it as summary
         Preference urlPref = findPreference(getString(R.string.pref_url_key));
-        url_address = centralUnit.getURL().getHost();
+        Preference portPref = findPreference(getString(R.string.pref_port_key));
+        Preference autoConnectPref = findPreference(getString(R.string.pref_autoconnect_key));
+        Preference logPref = findPreference(getString(R.string.pref_log_key));
+
+        // get default url and port
+        url_address = "http://" + centralUnit.getURL().getHost();
+        port_number = Integer.toString(centralUnit.getURL().getPort());
+        try {
+            new URL(url_address + ":" + port_number);
+        } catch (MalformedURLException mue) {
+            url_address = "http://192.168.0.100";
+            port_number = "18001";
+            Log.e(TAG, "onCreate() Malformed URL: " + mue.getMessage() + ", setting default values: \nurl_address = " + url_address + "\nport_number = " + port_number);
+        }
+        // set as preference summary text
         urlPref.setSummary( url_address);
+        portPref.setSummary(port_number);
 
         urlPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             // URL preference change listener
             @Override
             public boolean onPreferenceChange(Preference preference, Object newValue) {
+
                 String key = preference.getKey();
                 String value = (String) newValue;
+                String msg = "", ttl = "";
 
-                if ( key.equals(getString(R.string.pref_url_key)) ) {
+                if (key.equals(getString(R.string.pref_url_key))) {
                     // url input
 
-                    Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + newValue );
+                    Log.d(TAG, "onSharedPreferencesChanged(): key = " + key + ", value = " + newValue);
 
-                    if ( validateUrl(value) ) {
-                        preference.setSummary( value);
+                    if (validateUrl(value)) {
+                        preference.setSummary(value);
                         try {
                             centralUnit.setURL(new URL(value + ":" + port_number));
                             url_address = value;
                             Log.i(TAG, "setOnPreferenceChangeListener() CentralUnit URL updated: " + centralUnit.getURL().toString());
+                            connectionPreferenceChanged = true;
+                            return true;
                         } catch (MalformedURLException e) {
+                            ttl = "Invalid URL";
+                            msg = e.getMessage() + "\n\nValid URL example:\nfoo.bar.com";
                             Log.e(TAG, "setOnPreferenceChangeListener() Malformed URL: " + e.getMessage());
                         }
-                        connectionPreferenceChanged = true;
-                        return true;
-                    }
-                    else {
-                        String ttl = "Invalid URL";
-                        String msg = "Valid URL example:\nhttp://foo.bar.com";
-                        alertDialogMessageOk(ttl, msg, "OK");
-                        return false;
+                    } else {
+                        ttl = "Invalid URL";
+                        msg = "Malformed URL \"" + value + "\"\n\nValid URL example:\nhttp://foo.bar.com";
                     }
                 }
+                alertDialogMessageOk(ttl, msg, "OK");
                 return false;
             }
         });
-
-        Preference portPref = findPreference(getString(R.string.pref_port_key));
-//        port_number = defaultPreferences.getString(getString(R.string.pref_port_key), "");
-        port_number = Integer.toString( centralUnit.getURL().getPort() );
-        portPref.setSummary( port_number );
 
         // set port preference change listener
         portPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
@@ -137,10 +148,7 @@ public class PreferencesFragment extends PreferenceFragment {
             }
         });
 
-        // get auto-connect preference
-        Preference autoConnectPref = findPreference(getString(R.string.pref_autoconnect_key));
 
-        // set auto connect preference change listener
         autoConnectPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             // Auto-connect preference change listener
             @Override
@@ -156,6 +164,15 @@ public class PreferencesFragment extends PreferenceFragment {
                     return true;
                 }
                 return false;
+            }
+        });
+
+        logPref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            // Message log preference on click listener
+            public boolean onPreferenceClick(Preference preference) {
+                Intent intent = new Intent(getActivity(), LogActivity.class);
+                startActivity(intent);
+                return true;
             }
         });
     }

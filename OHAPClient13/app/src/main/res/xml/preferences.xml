@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+
     <PreferenceCategory
         android:title="@string/pref_category_title_connection">
+
+    <CheckBoxPreference
+        android:key="@string/pref_reconnect_on_shake_key"
+        android:title="@string/pref_reconnect_on_shake_title"
+        android:summary="@string/pref_reconnect_on_shake_summary"
+        android:defaultValue="true"
+        />
 
     <CheckBoxPreference
         android:key="@string/pref_autoconnect_key"
@@ -24,5 +32,17 @@
         android:defaultValue="" />
 
     </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/pref_category_title_diagnostics">
+
+        <Preference
+            android:key="@string/pref_log_key"
+            android:title="@string/pref_log_title"
+            android:summary="@string/pref_log_summary"
+            android:icon="@drawable/ic_mail"/>
+
+    </PreferenceCategory>
+
 
 </PreferenceScreen>

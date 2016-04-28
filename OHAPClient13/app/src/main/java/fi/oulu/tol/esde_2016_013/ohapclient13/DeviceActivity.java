@@ -67,11 +67,11 @@ public class DeviceActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // Loading XML layout and saving Bundle of instance state
+        // load XML layout and saving Bundle of instance state
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
 
-        // Getting references for Text View Widgets
+        // getting references for Text View Widgets
         textViewContainerName = (TextView)(findViewById(R.id.textViewContainerName));
         textViewDeviceName = (TextView)(findViewById(R.id.textViewDeviceName));
         textViewDeviceDesc = (TextView)(findViewById(R.id.textViewDeviceDesc));
@@ -87,27 +87,17 @@ public class DeviceActivity extends ActionBarActivity {
         textViewSwitchValue = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
 
 
-        // Get URL from the parent intent (ContainerActivity)
-        String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
-        final String central_unit_url = newUrl != null ? newUrl : centralUnit.getURL().toString();
-        Log.i(TAG, "onCreate() New CENTRAL_UNIT_URL received from intent: " + central_unit_url);
+//        // get URL from the parent intent (ContainerActivity)
+//        String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
+//        final String central_unit_url = newUrl != null ? newUrl : centralUnit.getURL().toString();
+//        Log.i(TAG, "onCreate() New CENTRAL_UNIT_URL received from intent: " + central_unit_url);
 
-        try {
-            // Instantiating CentralUnit placeholder for all containers and observers
-            centralUnit = CentralUnitConnection.getInstance();
+        // get central unit
+        centralUnit = CentralUnitConnection.getInstance();
+        Log.i(TAG, "onCreate() CentralUnit: " + centralUnit + "\nurl: " + centralUnit.getURL() + "\nname: " + centralUnit.getName() + "\ncontainer id: " + centralUnit.getId() + "\nitem count: " + centralUnit.getItemCount() + "\nlistening state: " + centralUnit.isListening());
 
-            Log.i(TAG, "onCreate() CentralUnit: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
 
-        } catch (MalformedURLException e) {
-            Log.e(TAG, "onCreate() Unable to instantiate CentralUnit: " + e.getMessage());
-
-        } catch (Exception e) {
-            Log.e(TAG, "onCreate() Unhandled error occurred: " + e.getMessage());
-        }
-
-        // Get Device id from the parent intent (ContainerActivity)
-        // Note: Item index is the index corresponding to the row user has clicked on the list view
-        // of ContainerActivity
+        // get device id from the parent intent
         long newId = getIntent().getLongExtra(DEVICE_ID, -1); // if id not found, -1 is returned
         Log.i(TAG, "onCreate() New DEVICE_ID received from intent: " + newId);
         if (newId == -1) {

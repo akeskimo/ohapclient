@@ -48,6 +48,7 @@ public class CentralUnitConnection extends CentralUnit {
     private Device[] dummyDevices; // dummy object array
 
     // Networking
+    private String defaultUrl = "http://default.url:9999";
     private boolean running = false;
     private boolean connected = false;
     private boolean autoConnect = false;
@@ -64,16 +65,23 @@ public class CentralUnitConnection extends CentralUnit {
     private boolean reconnectRequest;
     private boolean outgoingMessageActionFinished = true;
 
+    // connection status
+    private Status connectionStatus = Status.OFFLINE;
+
 
     // private constructor for singleton implementation
     private CentralUnitConnection() throws MalformedURLException {
-        super(new URL("http://ohap.opimobi.com:8080/"));
+        super(new URL("http://ohap.opimobi.com:8080/")); // this URL will be overwritten
     }
 
 
-    public static CentralUnitConnection getInstance() throws MalformedURLException {
+    public static CentralUnitConnection getInstance() {
         if (instance == null) {
-            instance = new CentralUnitConnection();
+            try {
+                instance = new CentralUnitConnection();
+            } catch (MalformedURLException e) {
+                Log.d("CentralUnitConnection", "getInstance() Constructor has malformed URL: " + e.getMessage() );
+            }
         }
         return instance;
     }
@@ -82,6 +90,21 @@ public class CentralUnitConnection extends CentralUnit {
         // initializes central unit singleton
         instance.setURL(url);
         this.observer = observer;
+    }
+
+    public Status getConnectionStatus() {
+        return connectionStatus;
+    }
+
+    public void setConnectionStatus(Status connectionStatus) {
+        this.connectionStatus = connectionStatus;
+    }
+
+
+    public enum Status {
+        ONLINE,
+        OFFLINE,
+        CONNECTING
     }
 
 
@@ -272,9 +295,10 @@ public class CentralUnitConnection extends CentralUnit {
                     socket.setSoTimeout(timeout);
                     inputStream = socket.getInputStream();
                     outputStream = socket.getOutputStream();
-                    Log.i(TAG, "IncomingThread.connect() Connected to " + getURL().toString() + ".");
+                    Log.i(TAG, "IncomingThread.connect() Connected to " + getURL() + ".");
 
                     setConnected(true);
+                    setConnectionStatus(Status.ONLINE);
 
                     incomingHandler.post(new ActivityAction("Connected"));
 
@@ -284,6 +308,8 @@ public class CentralUnitConnection extends CentralUnit {
 
                 } catch (IOException e) {
                     // If connection failed -> update flag, log and post error to UI
+
+                    setConnectionStatus(Status.OFFLINE);
 
                     Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout / 1000 + " seconds.");
 
@@ -301,10 +327,18 @@ public class CentralUnitConnection extends CentralUnit {
                     } catch (InterruptedException ie) {
                         Log.e(TAG, "connect() incomingThread sleep interrupted again: " + ie.getMessage());
                     }
+                } catch (IllegalArgumentException iae) {
+                    Log.e(TAG, "IncomingThread.connect() Invalid host/port: " + iae.getMessage() + "\ncentral unit url: " + instance.getURL() + "\nSetting url = http://192.168.0.100:18001");
+                    try {
+                        instance.setURL(new URL("http://192.168.0.100:18001"));
+                    } catch (MalformedURLException e) {
+                        Log.e(TAG, "IncomingThread.connect() Malformed url: " + e.getMessage());
+                    }
                 }
             }
 
             setConnected(false);
+            setConnectionStatus(Status.OFFLINE);
         }
 
 
@@ -337,6 +371,9 @@ public class CentralUnitConnection extends CentralUnit {
                 inputStream = null;
                 outputStream = null;
                 Log.i(TAG, "close() Connection to server was closed.");
+
+                setConnected(false);
+                setConnectionStatus(Status.OFFLINE);
             }
         }
     }
@@ -745,5 +782,13 @@ public class CentralUnitConnection extends CentralUnit {
 
     public void resetListeners() {
         nListeners = 0;
+    }
+
+    public void resetUrl() {
+        try {
+            instance.setURL(new URL(defaultUrl));
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "resetUrl() Malformed default URL value: " + defaultUrl + ",reason: " + e.getMessage() );
+        }
     }
 }

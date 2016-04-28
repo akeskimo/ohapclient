@@ -112,7 +112,7 @@ public class LogListAdapter implements android.widget.ListAdapter {
             messageLog = logContainer.getItemByIndex(position);
 
             // Set textview properties
-            viewHolder.textViewDestination.setText(messageLog.getMessageDestination());
+            viewHolder.textViewDestination.setText(messageLog.getMessageSource());
             viewHolder.textViewMessageType.setText(messageLog.getMessageType());
             viewHolder.textViewTime.setText(messageLog.getMessageTime());
 

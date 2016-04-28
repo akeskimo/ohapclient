@@ -35,7 +35,7 @@ public class MessageLog extends FileManagerUtility {
 	private long messageId = 0; 
 	private String message = "";
 	
-	private String messageType, messageTime, messageDestination;
+	private String messageType, messageTime, messageSource;
 	
 	
 	public String getMessage() {
@@ -52,12 +52,12 @@ public class MessageLog extends FileManagerUtility {
 	}
 
 
-	public String getMessageDestination() {
-		return messageDestination;
+	public String getMessageSource() {
+		return messageSource;
 	}
 
 
-	public MessageLog( LogContainer container, String newMessage, String messageType) {
+	public MessageLog( LogContainer container, String newMessage, String messageType, String source) {
 
 		// fields to be saved in the csv file
 		identifier = System.currentTimeMillis();
@@ -66,7 +66,7 @@ public class MessageLog extends FileManagerUtility {
 		message = newMessage;
 		
 		
-		this.messageDestination = "CLIENT"; // handles only received messages
+		this.messageSource = source; // handles only received messages
 		this.messageType = messageType;
 		this.messageTime = timestamp;
 		
@@ -184,7 +184,7 @@ public class MessageLog extends FileManagerUtility {
 		System.out.println("\n\nPrinting object info:");
 		System.out.println("messageType: " + messageType );
 		System.out.println("messageTime: " + messageTime);
-		System.out.println("messageDestination: " + messageDestination);
+		System.out.println("messageSource: " + messageSource);
 	}	
 		
 
