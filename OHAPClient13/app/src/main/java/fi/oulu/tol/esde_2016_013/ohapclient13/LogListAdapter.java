@@ -65,19 +65,19 @@ public class LogListAdapter implements android.widget.ListAdapter {
 
     @Override
     public int getCount() {
-        Log.d(TAG, "getCount() logContainer.getItemCount() returned: " + logContainer.getItemCount());
+//        Log.d(TAG, "getCount() logContainer.getItemCount() returned: " + logContainer.getItemCount());
         return logContainer.getItemCount();
     }
 
     @Override
     public Object getItem(int position) {
-        Log.d(TAG, "getItem() logContainer.getItem(position) returned: " + logContainer.getItemByIndex(position) );
+//        Log.d(TAG, "getItem() logContainer.getItem(position) returned: " + logContainer.getItemByIndex(position) );
         return logContainer.getItemByIndex(position);
     }
 
     @Override
     public long getItemId(int position) {
-        Log.d(TAG, "getItemId() logContainer.getItemByIndex(position).getId() returned: " + logContainer.getItemByIndex(position).getId() );
+//        Log.d(TAG, "getItemId() logContainer.getItemByIndex(position).getId() returned: " + logContainer.getItemByIndex(position).getId() );
         return logContainer.getItemByIndex(position).getId();
     }
 

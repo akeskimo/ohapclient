@@ -78,6 +78,7 @@ public class DeviceActivity extends ActionBarActivity {
 
         // seekbar widget
         seekBar = (SeekBar)(findViewById(R.id.seekBar));
+        seekBar.setMax(Integer.parseInt(getString(R.string.seekbar_maxvalue)));
         textViewSeekBarValue = (TextView)(findViewById(R.id.textViewSeekBar)); // displays dec value
         textViewSeekBarValueMin = (TextView)(findViewById(R.id.textViewDecimalMin)); // displays dec value
         textViewSeekBarValueMax = (TextView)(findViewById(R.id.textViewDecimalMax)); // displays dec value
@@ -158,7 +159,7 @@ public class DeviceActivity extends ActionBarActivity {
             } else if (device.getValueType() == Device.ValueType.DECIMAL) {
                 // seekbar is visible when active device has decimal value type, only
 
-                String value = "Value: " + device.getDecimalValue() + " " + device.getUnit();
+                String value = "Value: " + String.format("%1.2f", device.getDecimalValue()) + " " + device.getUnit();
 
                 // value text
                 textViewSeekBarValue.setVisibility(View.VISIBLE);
@@ -175,7 +176,9 @@ public class DeviceActivity extends ActionBarActivity {
                 if (device.getType() == Device.Type.ACTUATOR) {
                     // seek bar
                     seekBar.setVisibility(View.VISIBLE);
-                    seekBar.setProgress((int) device.getDecimalValue());
+                    double scaledValue =
+                            scale(device.getDecimalValue(), device.getMinValue(), device.getMaxValue(), 0, seekBar.getMax());
+                    seekBar.setProgress((int) scaledValue);
                 }
 
             } else {
@@ -193,9 +196,11 @@ public class DeviceActivity extends ActionBarActivity {
 
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                double scaledProgress =
+                    scale(progress, 0, seekBar.getMax(), device.getMinValue(), device.getMaxValue() );
                 try {
-                    centralUnit.sendDecimalValueChanged(device, progress);
-                    textViewSeekBarValue.setText(String.format("%1.0f %%", progress)); // display device value
+                    centralUnit.sendDecimalValueChanged(device, scaledProgress);
+                    textViewSeekBarValue.setText("Value: " + String.format("%1.2f", scaledProgress) + " " + device.getUnit()); // display device value
                 } catch (Exception e) {
                     Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
                 }
@@ -250,6 +255,12 @@ public class DeviceActivity extends ActionBarActivity {
     public void onDestroy() {
         super.onDestroy();
     }
+
+
+    public double scale(double value, double min, double max, double newMin, double newMax) {
+        return (value) / (max - min) * (newMax - newMin) + newMin;
+    }
+
 
     public String getContainerHierarchy(Device device) {
         // get device parent container hierarchy

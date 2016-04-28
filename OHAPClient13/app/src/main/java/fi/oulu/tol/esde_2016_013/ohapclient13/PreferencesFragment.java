@@ -56,6 +56,7 @@ public class PreferencesFragment extends PreferenceFragment {
         Preference portPref = findPreference(getString(R.string.pref_port_key));
         Preference autoConnectPref = findPreference(getString(R.string.pref_autoconnect_key));
         Preference logPref = findPreference(getString(R.string.pref_log_key));
+//        Preference shakePref = findPreference(getString(R.string.pref_reconnect_on_shake_key));
 
         // get default url and port
         url_address = "http://" + centralUnit.getURL().getHost();

@@ -77,6 +77,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     private static final double SHAKE_GEFORCE_LIMIT = 2.2F;
     private static final int SHAKE_DELAY_IN_BETWEEN = 10000;
     private long shakeTimestamp;
+    private boolean shakeReconnectEnabled = true;
 
     // alert dialog box
     private boolean alertShown = false;
@@ -101,9 +102,10 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     TextView textViewStatus;
     private static int runnableCtr = 0;
 
+    private TimerThread timer = null;
 
     // timer thread for querying connection status
-    private Thread timer = new Thread() {
+    private class TimerThread extends Thread {
 
         // sleep time between polls
         private int sleepTime = 500;
@@ -117,6 +119,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     Thread.sleep(sleepTime);
                 } catch (InterruptedException e) {
                     Log.d(TAG, "TimerThread.run() Interrupted: " + e.getMessage());
+                    break;
                 }
 
                 runnableCtr++;
@@ -184,24 +187,15 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         Log.d(TAG, "onCreate() Got intent extra, CONTAINER_ID = " + containerId);
         container = (Container) centralUnit.getItemById(containerId);
 
-        // set activity title
-//        if (containerId != 0)
-//            setTitle(container.getName());
-//        else
-//            setTitle(centralUnit.getName());
-
         // create list view objects with list adapter
         createListView();
 
         // start networking
         connect();
 
-        // start timer thread
-        if (!timer.isAlive())
-            timer.start();
-
         // register sensor listener
-        sensorManager.registerListener(this, accelerometer, sensorManager.SENSOR_DELAY_NORMAL);
+        if (shakeReconnectEnabled)
+            sensorManager.registerListener(this, accelerometer, sensorManager.SENSOR_DELAY_NORMAL);
 
         // set display headers
         textViewContainerName.setText(centralUnit.getName());
@@ -216,7 +210,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         Log.d(TAG, "onPause() Called");
 
         // unregister sensor listener
-        sensorManager.unregisterListener(this);
+        if (shakeReconnectEnabled)
+            sensorManager.unregisterListener(this);
     }
 
 
@@ -265,8 +260,17 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     public void onStart() {
         super.onStart();
-        active = true;
+
         Log.d(TAG, "onStart() Called");
+
+        active = true;
+
+        if (timer == null)
+            timer = new TimerThread();
+
+        // start timer thread
+        if (!timer.isAlive())
+            timer.start();
     }
 
     @Override
@@ -281,14 +285,14 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onDestroy();
         Log.d(TAG, "onDestroy() Called");
 
-//        // stop timer thread
-//        timer.interrupt();
-//        try {
-//            timer.join();
-//        } catch (InterruptedException e) {
-//            Log.e(TAG, "onDestroy() Unable to join timer thread: " + e.getMessage());
-//        }
-//        timer = null;
+        // stop timer thread
+        timer.interrupt();
+        try {
+            timer.join();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "onDestroy() Unable to join timer thread: " + e.getMessage());
+        }
+        timer = null;
 
 //        stop();
     }
@@ -353,12 +357,16 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         String port_value;
         String url_value;
         String autoconnect_key;
+        String shake_key;
+        String shake_value;
         boolean autoConnect;
 
         // preference keys
         autoconnect_key = getString(R.string.pref_autoconnect_key);
         port_key = getString(R.string.pref_port_key);
         url_key = getString(R.string.pref_url_key);
+        shake_key = getString(R.string.pref_reconnect_on_shake_key);
+
 
         // load auto-connect setting
         try {
@@ -369,6 +377,18 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             autoConnect = true;
         }
         Log.i(TAG, "loadPreferences() Preference loaded, key = " + autoconnect_key + ", value = " + autoConnect);
+
+
+
+        // load reconnect shake settings
+        try {
+            shakeReconnectEnabled = shared.getBoolean(shake_key,
+                    Boolean.parseBoolean(getString(R.string.pref_reconnect_on_shake_default)));
+        } catch (Exception e) {
+            Log.e(TAG, "loadPreferences() Unable to parse resource default value: " + getString(R.string.pref_reconnect_on_shake_default) + " to boolean. Forcing default value = true.");
+            shakeReconnectEnabled = true;
+        }
+        Log.i(TAG, "loadPreferences() Preference loaded, key = " + shake_key + ", value = " + shakeReconnectEnabled);
 
         // load port settings
         port_value = shared.getString(port_key, getString(R.string.pref_port_default));
@@ -490,7 +510,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             }
         }
 
-        centralUnit.resetListeners(); // make sure that number of containers is empty
+        centralUnit.resetListeners(); // make sure that number of containers is 0
 
         if (centralUnit.isListening()) {
             centralUnit.stopListening();
@@ -652,8 +672,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             String decimalUnit;
             String decimalAbbreviation;
 
-            Device device = null;
-            Container container = null;
+            Device newDevice = null;
+            Container newContainer = null;
             MessageLog messageLog = null;
             String msg = "";
             String msgTypeText = "";
@@ -747,18 +767,18 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // get parent container
-                        container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+                        newContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                         // create new decimal sensor device
-                        device = new Device(container, itemIdentifier, Device.Type.SENSOR, Device.ValueType.DECIMAL);
-                        device.setDecimalValue(itemDecimalValue);
-                        device.setMinMaxValues(decimalMin, decimalMax);
-                        device.setUnit(decimalUnit, decimalAbbreviation);
-                        device.setName(itemDataName);
-                        device.setDescription(itemDataDescription);
+                        newDevice = new Device(newContainer, itemIdentifier, Device.Type.SENSOR, Device.ValueType.DECIMAL);
+                        newDevice.setDecimalValue(itemDecimalValue);
+                        newDevice.setMinMaxValues(decimalMin, decimalMax);
+                        newDevice.setUnit(decimalUnit, decimalAbbreviation);
+                        newDevice.setName(itemDataName);
+                        newDevice.setDescription(itemDataDescription);
 
                         // add item to placeholder
-                        listItems.add(device);
+                        listItems.add(newDevice);
 
                         Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
 
@@ -771,22 +791,92 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                 case 0x05:
                     msgTypeText = "message-type-decimal-actuator";
 
+                    itemIdentifier = incomingMessage.integer32();
+                    itemDecimalValue = incomingMessage.decimal64();
+                    itemDataParentIdentifier = incomingMessage.integer32();
+                    itemDataName = incomingMessage.text();
+                    itemDataDescription = incomingMessage.text();
+                    itemDataInternal = incomingMessage.binary8();
+                    decimalMin = incomingMessage.decimal64();
+                    decimalMax = incomingMessage.decimal64();
+                    decimalUnit= incomingMessage.text();
+                    decimalAbbreviation= incomingMessage.text();
+
                     msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+                    msg += "decimal-value: " + itemDecimalValue + "\n";
+                    msg += "item-data-parent-identifier: " + itemDataParentIdentifier + "\n";
+                    msg += "item-data-name: " + itemDataName + "\n";
+                    msg += "item-data-description: " + itemDataDescription + "\n";
+                    msg += "item-data-internal: " + itemDataInternal + "\n";
+                    msg += "decimal-min: " + decimalMin + "\n";
+                    msg += "decimal-max: " + decimalMax + "\n";
+                    msg += "decimal-unit: " + decimalUnit + "\n";
+                    msg += "decimal-abbreviation: " + decimalAbbreviation + "\n";
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
 
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    try {
+                        // get parent container
+                        newContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+
+                        // create new decimal sensor device
+                        newDevice = new Device(newContainer, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.DECIMAL);
+                        newDevice.setDecimalValue(itemDecimalValue);
+                        newDevice.setMinMaxValues(decimalMin, decimalMax);
+                        newDevice.setUnit(decimalUnit, decimalAbbreviation);
+                        newDevice.setName(itemDataName);
+                        newDevice.setDescription(itemDataDescription);
+
+                        // add item to placeholder
+                        listItems.add(newDevice);
+
+                        Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "handleMessageResponse() Unable to create device: " + e.getMessage());
+                    }
 
                     break;
 
                 case 0x06:
                     msgTypeText = "message-type-binary-sensor";
 
+                    itemIdentifier = incomingMessage.integer32();
+                    itemBinaryValue = incomingMessage.binary8();
+                    itemDataParentIdentifier = incomingMessage.integer32();
+                    itemDataName = incomingMessage.text();
+                    itemDataDescription = incomingMessage.text();
+                    itemDataInternal = incomingMessage.binary8();
+
                     msg = msgTypeText + "\n";
+                    msg += "item-identifier: " + itemIdentifier + "\n";
+                    msg += "binary-value: " + itemBinaryValue + "\n";
+                    msg += "item-data-parent-identifier: " + itemDataParentIdentifier + "\n";
+                    msg += "item-data-name: " + itemDataName + "\n";
+                    msg += "item-data-description: " + itemDataDescription + "\n";
+                    msg += "item-data-internal: " + itemDataInternal + "\n";
 
-                    Log.i(TAG, "handleMessageResponse() " + msg);
+                    Log.i(TAG, "handleMessageResponse() \n" + msg);
 
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    try {
+                        // get parent container
+                        newContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+
+                        // create new binary actuator
+                        newDevice = new Device(newContainer, itemIdentifier, Device.Type.SENSOR, Device.ValueType.BINARY);
+                        newDevice.setBinaryValue(itemBinaryValue);
+                        newDevice.setName(itemDataName);
+                        newDevice.setDescription(itemDataDescription);
+
+                        // add item to placeholder
+                        listItems.add(newDevice);
+
+                        Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "handleMessageResponse() Unable to create device: " + e.getMessage());
+                    }
 
                     break;
 
@@ -813,16 +903,16 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // get parent container
-                        container = (Container)centralUnit.getItemById(itemDataParentIdentifier);
+                        newContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                         // create new binary actuator
-                        device = new Device(container, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.BINARY);
-                        device.setBinaryValue(itemBinaryValue);
-                        device.setName(itemDataName);
-                        device.setDescription(itemDataDescription);
+                        newDevice = new Device(newContainer, itemIdentifier, Device.Type.ACTUATOR, Device.ValueType.BINARY);
+                        newDevice.setBinaryValue(itemBinaryValue);
+                        newDevice.setName(itemDataName);
+                        newDevice.setDescription(itemDataDescription);
 
                         // add item to placeholder
-                        listItems.add(device);
+                        listItems.add(newDevice);
 
                         Log.i(TAG, "handleMessageResponse() New device " + itemIdentifier + " added to container " + itemDataParentIdentifier);
 
@@ -870,29 +960,31 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                             centralUnit.sendListeningStart(centralUnit);
 
                         } else {
-                            container = (Container) centralUnit.getItemById(itemIdentifier);
-                            if (container != null) {
-                                container.startListening();
+                            newContainer = (Container) centralUnit.getItemById(itemIdentifier);
+                            if (newContainer != null) {
+                                newContainer.startListening();
 //                                listeningContainerIds.add(container.getId());
                             } else {
+                                // add new container
+                                Container parentContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
 
                                 // create new container with provided data
-                                container = new Container(centralUnit, itemIdentifier);
-                                container.setName(itemDataName);
-                                container.setDescription(itemDataDescription);
+                                newContainer = new Container(parentContainer, itemIdentifier);
+                                newContainer.setName(itemDataName);
+                                newContainer.setDescription(itemDataDescription);
 
                                 // start listening
-                                container.startListening();
-                                listeningContainerIds.add(container.getId());
+                                newContainer.startListening();
+                                listeningContainerIds.add(newContainer.getId());
 
                                 // add to item placeholder
-                                listItems.add(container);
+                                listItems.add(newContainer);
 
                                 // add container to listeners and send listening start
                                 //                            container.startListening();
                                 //                            listeningContainerIds.add(container.getId());
 
-                                Log.i(TAG, "handleMessageResponse() New container: " + container.getId() + " added to parent " + container.getParent().getId());
+                                Log.i(TAG, "handleMessageResponse() New container: " + newContainer.getId() + " added to parent " + newContainer.getParent().getId());
                             }
                         }
 
@@ -918,11 +1010,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // set properties
-                        device = (Device) centralUnit.getItemById(itemIdentifier);
-                        device.setDecimalValue(itemDecimalValue);
-                        Log.i(TAG, "handleMessageResponse() Device " + device.getId() + " changed decimal value = " + device.getDecimalValue());
+                        newDevice = (Device) centralUnit.getItemById(itemIdentifier);
+                        newDevice.setDecimalValue(itemDecimalValue);
+                        Log.i(TAG, "handleMessageResponse() Device " + newDevice.getId() + " changed decimal value = " + newDevice.getDecimalValue());
                     } catch (Exception e){
-                        Log.e(TAG, "handleMessageResponse() Unable to set device " + device.getId() + " value, reason: " + e.getMessage());
+                        Log.e(TAG, "handleMessageResponse() Unable to set device " + newDevice.getId() + " value, reason: " + e.getMessage());
                     }
                     break;
 
@@ -941,11 +1033,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // set properties
-                        device = (Device) centralUnit.getItemById(itemIdentifier);
-                        device.setBinaryValue(itemBinaryValue);
-                        Log.i(TAG, "handleMessageResponse() Device " + device.getId() + " changed binary value = " + device.getBinaryValue());
+                        newDevice = (Device) centralUnit.getItemById(itemIdentifier);
+                        newDevice.setBinaryValue(itemBinaryValue);
+                        Log.i(TAG, "handleMessageResponse() Device " + newDevice.getId() + " changed binary value = " + newDevice.getBinaryValue());
                     } catch (Exception e){
-                        Log.e(TAG, "handleMessageResponse() Unable to set device " + device.getId() + " value, reason: " + e.getMessage());
+                        Log.e(TAG, "handleMessageResponse() Unable to set device " + newDevice.getId() + " value, reason: " + e.getMessage());
                     }
 
                     break;
@@ -967,7 +1059,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                         Log.i(TAG, "handleMessageResponse() Item " + item.getId() + " removed from container " + item.getParent().getId() );
                         item.destroy();
                     } catch (Exception e){
-                        Log.e(TAG, "handleMessageResponse() Unable to remove device " + device.getId() + ", reason: " + e.getMessage());
+                        Log.e(TAG, "handleMessageResponse() Unable to remove device " + newDevice.getId() + ", reason: " + e.getMessage());
                     }
 
                     break;
@@ -985,13 +1077,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // add listener
-                        container = (Container) centralUnit.getItemById(itemIdentifier);
-                        container.startListening();
-                        listeningContainerIds.add(container.getId());
-                        Log.i(TAG, "handleMessageResponse() Container " + container.getId() + " started listening" );
+                        newContainer = (Container) centralUnit.getItemById(itemIdentifier);
+                        newContainer.startListening();
+                        listeningContainerIds.add(newContainer.getId());
+                        Log.i(TAG, "handleMessageResponse() Container " + newContainer.getId() + " started listening" );
 
                     } catch (Exception e){
-                        Log.e(TAG, "handleMessageResponse() Container " + container.getId() + " unable to start listening, reason: " + e.getMessage());
+                        Log.e(TAG, "handleMessageResponse() Container " + newContainer.getId() + " unable to start listening, reason: " + e.getMessage());
                     }
 
                     break;
@@ -1008,13 +1100,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                     try {
                         // add listener
-                        container = (Container) centralUnit.getItemById(itemIdentifier);
-                        container.stopListening();
-                        listeningContainerIds.remove(container.getId());
-                        Log.i(TAG, "handleMessageResponse() Container " + container.getId() + " stopped listening" );
+                        newContainer = (Container) centralUnit.getItemById(itemIdentifier);
+                        newContainer.stopListening();
+                        listeningContainerIds.remove(newContainer.getId());
+                        Log.i(TAG, "handleMessageResponse() Container " + newContainer.getId() + " stopped listening" );
 
                     } catch (Exception e){
-                        Log.e(TAG, "handleMessageResponse() Container " + container.getId() + " unable to stop listening, reason: " + e.getMessage());
+                        Log.e(TAG, "handleMessageResponse() Container " + newContainer.getId() + " unable to stop listening, reason: " + e.getMessage());
                     }
 
                     break;
@@ -1049,25 +1141,21 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         String msg;
 
         if (messageAction.equals("No connection")) {
-//            if (!connecting) {
             msg = "Unable to connect to server\n" + centralUnit.getURL() + "\n\nCheck URL and port in settings";
             alertDialogMessageOk(ttl, msg, "OK");
             stopContainerListening();
             destroyItems();
             connect();
-//            }
 
         } else if (messageAction.equals("Connection closed")) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
-//            stop();
             stopContainerListening();
             destroyItems();
             connect();
 
         } else if (messageAction.equals("Connected")){
             msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
-//            setTitle(centralUnit.getName());
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
 
         } else if (messageAction.equals("Reconnecting")){

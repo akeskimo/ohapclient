@@ -157,8 +157,8 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
 
                 // Set displayed row icon and device value
 
-                if (device.getType() == Device.Type.ACTUATOR) {
-                    // type actuator
+                if (device.getValueType() == Device.ValueType.BINARY) {
+                    // type binary
 
                     viewHolder.imgView.setImageResource(R.drawable.ic_lamp);
                     if (device.getBinaryValue()) {
@@ -169,31 +169,32 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
                         viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
                     }
 
-                } else if (device.getType() == Device.Type.SENSOR) {
-                    // type sensor
+                } else if (device.getValueType() == Device.ValueType.DECIMAL) {
+                    // type decimal
 
                     viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
                     if (device.getDecimalValue() != 0) {
                         viewHolder.rowTextViewValue.setText(
-                                String.format("%1.0f %%", device.getDecimalValue()));
+                                String.format("%1.1f " + device.getUnit(), device.getDecimalValue()));
                         viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
                     } else {
                         viewHolder.rowTextViewValue.setText("OFF");
                         viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
                     }
 
-                } else if (device.getType() == Device.Type.SENSOR) {
-                    // type sensor
-
-                    viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
-                    if (device.getDecimalValue() != 0) {
-                        viewHolder.rowTextViewValue.setText(
-                                String.format("%1.0f %%", device.getDecimalValue()));
-                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
-                    } else {
-                        viewHolder.rowTextViewValue.setText("OFF");
-                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
-                    }
+//                }
+//                else if (device.getType() == Device.Type.SENSOR) {
+//                    // type sensor
+//
+//                    viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
+//                    if (device.getDecimalValue() != 0) {
+//                        viewHolder.rowTextViewValue.setText(
+//                                String.format("%1.0f %%", device.getDecimalValue()));
+//                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
+//                    } else {
+//                        viewHolder.rowTextViewValue.setText("OFF");
+//                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
+//                    }
 
                 } else {
                     Log.wtf(TAG, "getView() No device type found!");

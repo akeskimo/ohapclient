@@ -52,7 +52,8 @@
         OHAPClient13 Remote Control app for Open Home Automation Protocol (OHAP)
         \n\nThis application has been developed as course work for 815303A Embedded Software Development
         Environments -course during Academic year 2016 at the University of Oulu.
-        \n\n\nAuthor: Aapo Keskimolo (aapokesk@gmail.com) \n </string>
+        \n\n\nAuthor:
+        \nAapo Keskimolo (aapokesk@gmail.com) \n </string>
 
     <!-- Menu bar -->
     <string name="menu_main">Main</string>
