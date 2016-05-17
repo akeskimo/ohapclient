@@ -183,7 +183,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     protected void onResume() {
         super.onResume();
 
-        Log.d(TAG, "onResume() Called");
+        Log.d(TAG, "onResume() Called"); 
 
         // get container passed to the activity
         long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
