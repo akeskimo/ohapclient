@@ -9,6 +9,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * v1.0     Aapo Keskimolo      Initial version
  * v1.1     Aapo Keskimolo      Display device value on ListView and load shared preference upon startup
  * v1.2     Aapo Keskimolo      Added alert dialogs, connection observer, ping menu bar item and networking support
+ * v1.3     Aapo Keskimolo      Fixed inconsistent container listener list
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
  * @version 1.2
@@ -49,6 +50,7 @@ import com.opimobi.ohap.message.IncomingMessage;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import fi.oulu.tol.esde_2016_013.ohapclient13.utility.LogContainer;
@@ -85,6 +87,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
     // container listener
     List<Long> listeningContainerIds = new ArrayList<>();
+    ArrayList<Container> listeningContainers = new ArrayList<>();
     ArrayList<Item> listItems = new ArrayList<>();
 
     // log utilities place holder
@@ -184,7 +187,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         // get container passed to the activity
         long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
-        Log.d(TAG, "onCreate() Got intent extra, CONTAINER_ID = " + containerId);
+        Log.d(TAG, "onResume() Got intent extra, CONTAINER_ID = " + containerId);
         container = (Container) centralUnit.getItemById(containerId);
 
         // create list view objects with list adapter
@@ -212,6 +215,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         // unregister sensor listener
         if (shakeReconnectEnabled)
             sensorManager.unregisterListener(this);
+
+        active = false;
+        stop();
     }
 
 
@@ -260,24 +266,25 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     public void onStart() {
         super.onStart();
-
         Log.d(TAG, "onStart() Called");
-
-        active = true;
-
-        if (timer == null)
-            timer = new TimerThread();
-
-        // start timer thread
-        if (!timer.isAlive())
-            timer.start();
+//
+//        active = true;
+//
+//        if (timer == null)
+//            timer = new TimerThread();
+//
+//        // start timer thread
+//        if (!timer.isAlive())
+//            timer.start();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        active = false;
         Log.d(TAG, "onStop() Called");
+
+//        active = false;
+//        stop();
     }
 
     @Override
@@ -286,15 +293,15 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         Log.d(TAG, "onDestroy() Called");
 
         // stop timer thread
-        timer.interrupt();
-        try {
-            timer.join();
-        } catch (InterruptedException e) {
-            Log.e(TAG, "onDestroy() Unable to join timer thread: " + e.getMessage());
+        if (timer != null) {
+            timer.interrupt();
+            try {
+                timer.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "onDestroy() Unable to join timer thread: " + e.getMessage());
+            }
+            timer = null;
         }
-        timer = null;
-
-//        stop();
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////
@@ -302,8 +309,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     /////////////////////////////////////////////////////////////////////////////////////////////
 
     private void createListView() {
+        // Create ListAdapter and set it to ListView
+
         try {
-            // Create ListAdapter and set it to ListView
             ListView listView = (ListView) findViewById(R.id.listView);
             listView.setAdapter(new ContainerListAdapter(container));
 
@@ -321,8 +329,6 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                         // selected item is container, launch container activity
                         intent = new Intent(getApplicationContext(), ContainerActivity.class);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-
                         intent.putExtra(CONTAINER_ID, container.getItemByIndex(position).getId());
 
                     } else {
@@ -332,8 +338,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                         // select item is device, launch device activity
                         intent = new Intent(ContainerActivity.this, DeviceActivity.class);
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
                         intent.putExtra(DEVICE_ID, container.getItemByIndex(position).getId() );
+                        intent.putExtra(CONTAINER_ID, container.getItemByIndex(position).getId() );
                     }
 
                     getApplicationContext().startActivity(intent);
@@ -341,7 +347,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             });
 
         } catch (Exception e) {
-            Log.e(TAG, "onCreate() Unable to create ListView / Launch intent: " + e.getMessage());
+            Log.e(TAG, "createListView() Unable to create ListView / Launch intent: " + e.getMessage());
         }
     }
 
@@ -461,11 +467,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         } else {
             // auto-connect feature is switched off
 
-            // stop networking
-            stopContainerListening();
-            destroyItems();
-//            stop(); // TODO Is stopping networking necessary or should the connection be left as it is?
-            centralUnit.stop();
+            stop();
 
             // display a dialog to inform user that auto connection is switched off
             String ttl = "Auto-connect is off";
@@ -476,9 +478,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
     private void stop() {
         // handle stop request
-        stopContainerListening();
-        destroyItems();
-        centralUnit.stop();
+//        stopContainerListening();
+//        destroyItems();
+//        centralUnit.stop();
     }
 
     private void reconnect() {
@@ -497,26 +499,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
     private void stopContainerListening() {
         // stops containers from listening
-
-        for (long id: listeningContainerIds) {
-            try {
-                Container container = (Container) centralUnit.getItemById(id);
-                if (container.isListening()) {
-                    container.stopListening();
-                    Log.d(TAG, "stopContainerListening() Container " + id + " stopped listening");
-                }
-            } catch(Exception e) {
-                Log.d(TAG, "stopContainerListening() Unable to stop container " + id + "from listening!");
-            }
-        }
-
-        centralUnit.resetListeners(); // make sure that number of containers is 0
-
-        if (centralUnit.isListening()) {
-            centralUnit.stopListening();
-            Log.d(TAG, "stopContainerListening() Central unit stopped listening");
+        Log.d(TAG, "stopContainerListening() Containers currently listening: " + listeningContainerIds);
+        for (Container container: listeningContainers) {
+            container.stopListening();
         }
     }
+
+
 
 
     private boolean checkNetwork() {
@@ -945,25 +934,33 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                         // set container properties
 
                         if (itemIdentifier == 0) {
-                            // update central unit with the information received
+                            // new central unit
+
                             if (centralUnit.getId() == -1) {
                                 centralUnit = CentralUnitConnection.getInstance();
                                 Log.d(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
                             }
 
+                            newContainer = centralUnit;
+
                             centralUnit.setName(itemDataName);
-//                            setTitle(centralUnit.getName()); // update app title
                             centralUnit.setDescription(itemDataDescription);
+
                             Log.i(TAG, "handleMessageResponse() New central unit: " + centralUnit.getId());
 
                             // send listening start to server
                             centralUnit.sendListeningStart(centralUnit);
+                            listeningContainerIds.add(container.getId());
 
                         } else {
+                            // new child container
+
                             newContainer = (Container) centralUnit.getItemById(itemIdentifier);
+
                             if (newContainer != null) {
                                 newContainer.startListening();
-//                                listeningContainerIds.add(container.getId());
+                                listeningContainerIds.add(container.getId());
+
                             } else {
                                 // add new container
                                 Container parentContainer = (Container)centralUnit.getItemById(itemDataParentIdentifier);
@@ -977,7 +974,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                                 newContainer.startListening();
                                 listeningContainerIds.add(newContainer.getId());
 
-                                // add to item placeholder
+                                // add to item placeholder to be removed after application is closed
                                 listItems.add(newContainer);
 
                                 // add container to listeners and send listening start
@@ -991,6 +988,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
                     } catch (Exception e) {
                         Log.e(TAG, "handleMessageResponse() Unable to create new container: " + e.getMessage());
                     }
+
+                    if (!listeningContainers.contains(newContainer)) {
+                        // add container to listening container list
+                        listeningContainers.add(newContainer);
+                        Log.i(TAG, "handleMessageResponse() New container: " + newContainer.getId() + " added to listening list");
+                    } else
+                        Log.i(TAG, "handleMessageResponse() Container: " + newContainer.getId() + " is already in the listening list (items: " + listeningContainers.size() + ")");
 
                     break;
 
@@ -1143,15 +1147,14 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         if (messageAction.equals("No connection")) {
             msg = "Unable to connect to server\n" + centralUnit.getURL() + "\n\nCheck URL and port in settings";
             alertDialogMessageOk(ttl, msg, "OK");
-            stopContainerListening();
-            destroyItems();
+            stop();
             connect();
 
         } else if (messageAction.equals("Connection closed")) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
             stopContainerListening();
-            destroyItems();
+            stop();
             connect();
 
         } else if (messageAction.equals("Connected")){

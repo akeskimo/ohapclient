@@ -64,6 +64,7 @@ public class CentralUnitConnection extends CentralUnit {
     private static int incomingThreadCtr = 0;
     private boolean reconnectRequest;
     private boolean outgoingMessageActionFinished = true;
+    private boolean stopCalled = false;
 
     // connection status
     private Status connectionStatus = Status.OFFLINE;
@@ -414,7 +415,8 @@ public class CentralUnitConnection extends CentralUnit {
     }
 
     public void stop() {
-//        this.observer = null;
+        this.observer = null;
+        stopCalled = true;
         listeningStateChanged(this, false);
     }
 
@@ -501,7 +503,8 @@ public class CentralUnitConnection extends CentralUnit {
                 sendListeningStop(container);
             }
 
-            if (nListeners == 0) {
+            if (stopCalled) {
+                stopCalled = false;
                 stopNetworking();
             }
         }
