@@ -330,7 +330,6 @@ public class CentralUnitConnection extends CentralUnit {
 
                     if (initialConnection) {
                         Log.d(TAG, "Sent initial connection message!");
-                        outgoingMessageHandler.post(new ActivityAction("online_or_simulation"));
                         setInitialConnection(false);
                     }
 

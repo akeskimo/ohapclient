@@ -169,12 +169,12 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         // Singleton instance of the Main CentralUnit containing devices / containers
         centralUnit = CentralUnitConnection.getInstance();
 
-        // at first init, ask user in which mode the app should be run
-        if (centralUnit.isInitialConnection() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ) {
-            String msg = "Do you want to switch to simulation mode?";
-            alertDialogQuestionOnlineOrSimulation(msg, "Continue online", "Simulation mode");
-            Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
-        }
+//        // at first init, ask user in which mode the app should be run
+//        if (centralUnit.isInitialConnection() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ) {
+//            String msg = "Do you want to switch to simulation mode?";
+//            alertDialogQuestionOnlineOrSimulation(msg, "Continue online", "Simulation mode");
+//            Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
+//        }
 
         // loads preferences (Central Unit URL, Auto-connect, etc.)
         loadPreferences();
@@ -186,6 +186,13 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onResume();
 
         Log.d(TAG, "onResume() Called");
+
+        // at first init, ask user in which mode the app should be run
+        if (centralUnit.isInitialConnection() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ) {
+            String msg = "Do you want to switch to simulation mode?";
+            alertDialogQuestionOnlineOrSimulation(msg, "Continue online", "Simulation mode");
+            Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
+        }
 
         // get container passed to the activity
         long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
