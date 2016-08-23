@@ -190,7 +190,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         // at first init, ask user in which mode the app should be run
         if (centralUnit.isInitialConnection() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ) {
             String msg = "Do you want to switch to simulation mode?";
-            alertDialogQuestionOnlineOrSimulation(msg, "Continue online", "Simulation mode");
+            alertDialogQuestionOnlineOrSimulation(msg, "Online", "Simulation");
             Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
         }
 
@@ -213,6 +213,12 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         textViewContainerName.setText(centralUnit.getName());
         textViewUrlAddress.setText(centralUnit.getURL().toString());
         textViewStatus.setText(centralUnit.getConnectionStatus().toString());
+
+        // start timer thread
+        if (timer == null)
+            timer = new TimerThread();
+        if (!timer.isAlive())
+            timer.start();
 
         activityActive = true;
     }
@@ -277,25 +283,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     @Override
     public void onStart() {
         super.onStart();
-        Log.d(TAG, "onStart() Called");
-//
-//        activityActive = true;
-//
-//        if (timer == null)
-//            timer = new TimerThread();
-//
-//        // start timer thread
-//        if (!timer.isAlive())
-//            timer.start();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        Log.d(TAG, "onStop() Called");
-
-//        activityActive = false;
-//        stop();
     }
 
     @Override
@@ -639,11 +631,17 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
                         case DialogInterface.BUTTON_NEGATIVE:
                             if (centralUnit != null) {
-                                Log.i(TAG, "Initializing central unit with dummy devices for simulation mode:");
-                                centralUnit.initializeWithDummies(new URL(urlStr), context, container, 10);
-                                centralUnit.setConnectionStatus(CentralUnitConnection.Status.SIMULATION);
-                                simulationMode = true;
-                                Log.i(TAG, "Initialisation of simulation mode is finished.");
+                                if (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.ONLINE) {
+                                    Log.i(TAG, "Initializing central unit with dummy devices for simulation mode:");
+                                    centralUnit.initializeWithDummies(new URL(urlStr), context, container, 10);
+                                    centralUnit.setConnectionStatus(CentralUnitConnection.Status.SIMULATION);
+                                    simulationMode = true;
+                                    Log.i(TAG, "Initialisation of simulation mode is finished.");
+                                } else {
+                                    String msg = "Unable to run in SIMULATION -mode: Device has already been connected to the server";
+                                    Log.i(TAG, msg);
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT );
+                                }
                             }
                             break;
                     }

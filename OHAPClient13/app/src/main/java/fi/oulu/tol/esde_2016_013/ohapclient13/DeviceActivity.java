@@ -187,8 +187,23 @@ public class DeviceActivity extends ActionBarActivity {
 
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+//                double scaledProgress =
+//                    scale(progress, 0, seekBar.getMax(), device.getMinValue(), device.getMaxValue() );
+//                try {
+//                    centralUnit.setDecimalValueChanged(device, scaledProgress);
+//                    textViewSeekBarValue.setText("Value: " + String.format("%1.2f", scaledProgress) + " " + device.getUnit()); // display device value
+//                } catch (Exception e) {
+//                    Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
+//                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) { }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
                 double scaledProgress =
-                    scale(progress, 0, seekBar.getMax(), device.getMinValue(), device.getMaxValue() );
+                        scale(seekBar.getProgress(), 0, seekBar.getMax(), device.getMinValue(), device.getMaxValue() );
                 try {
                     centralUnit.setDecimalValueChanged(device, scaledProgress);
                     textViewSeekBarValue.setText("Value: " + String.format("%1.2f", scaledProgress) + " " + device.getUnit()); // display device value
@@ -196,12 +211,6 @@ public class DeviceActivity extends ActionBarActivity {
                     Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
                 }
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) { }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) { }
         });
 
 

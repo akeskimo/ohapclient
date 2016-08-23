@@ -9,15 +9,32 @@ First member: Aapo Keskimölö, 1832390, aapokesk@gmail.com, akeskimo
 ### REPOSITORY ###
 
 * Repository for OHAP Client 13 that can be used to monitor and actuate in-house devices
-* Supports Android phones API 15 and up
+
+### REQUIREMENTS ###
 * Java JDK 1.7
-* Minimum Android SDK 15 (target 21)
+* Minimum Android SDK 15 (target SDK21)
+* Android phone or Emulator API15+
 * AppCombat 7.21
 
-### BUILD AND RUN INSTRUCTIONS ###
-
+### BUILD INSTRUCTIONS ###
 * Build 'app' / Make project in Android Studio
-* Run app
+
+### INSTRUCTIONS FOR TESTING THE APP ON OHAP SERVER ###
+* Run app on Android device or built-in emulator (>API15)
+* Press "ONLINE" on start-up
+* Start OHAP Server by executing
+    java -jar ohap-tcp-server\bin\jar\tcp-ohap-server.jar
+  or by running Windows batch file
+    start_tcp_ohap_server.bat
+* Make sure that both OHAP App and Server are connected to the same Local Area Network (LAN)
+* Check LOCALHOST address (ipconfig/ifconfig) and configure the : 
+  settings -> Auto-connect -> Enabled
+  settings -> Server -> http://192.168.XXX.XXX
+  settings -> Port -> 18001
+
+### INSTRUCTIONS WITH SIMULATION ONLY ###
+* Run app on Android device or built-in emulator (>API15)
+* Press "SIMULATION" on start-up
 
 ### TEST RESULTS ###
 

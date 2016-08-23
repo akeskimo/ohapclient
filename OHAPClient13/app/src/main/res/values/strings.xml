@@ -7,6 +7,9 @@
     <string name="title_container_activity">OHAPClient13</string>
     <string name="menu_click_toast">Already in the Activity</string>
     <string name="ping_message">ping</string>
+    <string name="question_box_startup">Do you want to switch to simulation mode?</string>
+    <string name="online_mode">ONLINE</string>
+    <string name="simulation_mode">SIMULATION</string>
 
     <!-- Container list adapter -->
     <string name="color_device_value_on">#ffffff</string>

@@ -122,7 +122,6 @@ public class CentralUnitConnection extends CentralUnit {
         Log.d(TAG, "setInitialConnection() Initial connection status = " + initialConnection);
     }
 
-
     public enum Status {
         ONLINE,
         OFFLINE,
@@ -302,6 +301,11 @@ public class CentralUnitConnection extends CentralUnit {
 
                 try {
 
+                    if (initialConnection) {
+                        Log.d(TAG, "CentralUnit initial connection detected");
+                        setInitialConnection(false);
+                    }
+
                     socket = new Socket();
                     socket.connect(new InetSocketAddress(
                                     instance.getURL().getHost(),
@@ -326,11 +330,6 @@ public class CentralUnitConnection extends CentralUnit {
 
                     if (getConnectionStatus() != Status.SIMULATION) {
                         setConnectionStatus(Status.OFFLINE);
-                    }
-
-                    if (initialConnection) {
-                        Log.d(TAG, "Sent initial connection message!");
-                        setInitialConnection(false);
                     }
 
                     Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout / 1000 + " seconds.");

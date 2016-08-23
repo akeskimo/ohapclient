@@ -1,0 +1,1 @@
+start cmd /k java -jar ohap-tcp-server\bin\jar\tcp-ohap-server.jar
