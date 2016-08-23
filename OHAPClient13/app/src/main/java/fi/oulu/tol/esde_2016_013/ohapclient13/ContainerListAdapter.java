@@ -10,7 +10,7 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * v1.1     Aapo Keskimolo      ListView displays value of the device
  *
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.0
+ * @version 1.1
  */
 
 import android.content.Context;
@@ -38,7 +38,7 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
     // Container object that will store the item information that will be displayed on ListView
     private Container container;
 
-    // Contains array of all observers that will be notified upon EventSource.onEvent()-call
+    // Contains the array of all observers that will be notified upon onEvent -callback
     private final DataSetObservable dataSetObservable = new DataSetObservable();
 
 
@@ -181,20 +181,6 @@ public class ContainerListAdapter implements android.widget.ListAdapter, EventSo
                         viewHolder.rowTextViewValue.setText("OFF");
                         viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
                     }
-
-//                }
-//                else if (device.getType() == Device.Type.SENSOR) {
-//                    // type sensor
-//
-//                    viewHolder.imgView.setImageResource(R.drawable.ic_temperaturesensor);
-//                    if (device.getDecimalValue() != 0) {
-//                        viewHolder.rowTextViewValue.setText(
-//                                String.format("%1.0f %%", device.getDecimalValue()));
-//                        viewHolder.rowTextViewValue.setTextColor(Color.CYAN);
-//                    } else {
-//                        viewHolder.rowTextViewValue.setText("OFF");
-//                        viewHolder.rowTextViewValue.setTextColor(Color.GRAY);
-//                    }
 
                 } else {
                     Log.wtf(TAG, "getView() No device type found!");

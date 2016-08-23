@@ -58,9 +58,6 @@ public class DeviceActivity extends ActionBarActivity {
     // top-level central unit container
     private static CentralUnitConnection centralUnit = null;
 
-    // intent container
-    Container container;
-
     // active device displayed on the UI
     private Device device = null;
 
@@ -87,16 +84,9 @@ public class DeviceActivity extends ActionBarActivity {
         switch1 = (Switch)(findViewById(R.id.switch1));
         textViewSwitchValue = (TextView)(findViewById(R.id.textViewSwitch)); // displays bin value
 
-
-//        // get URL from the parent intent (ContainerActivity)
-//        String newUrl = getIntent().getStringExtra(CENTRAL_UNIT_URL);
-//        final String central_unit_url = newUrl != null ? newUrl : centralUnit.getURL().toString();
-//        Log.i(TAG, "onCreate() New CENTRAL_UNIT_URL received from intent: " + central_unit_url);
-
         // get central unit
         centralUnit = CentralUnitConnection.getInstance();
         Log.i(TAG, "onCreate() CentralUnit: " + centralUnit + "\nurl: " + centralUnit.getURL() + "\nname: " + centralUnit.getName() + "\ncontainer id: " + centralUnit.getId() + "\nitem count: " + centralUnit.getItemCount() + "\nlistening state: " + centralUnit.isListening());
-
 
         // get device id from the parent intent
         long newId = getIntent().getLongExtra(DEVICE_ID, -1); // if id not found, -1 is returned
@@ -106,9 +96,8 @@ public class DeviceActivity extends ActionBarActivity {
         }
         final long device_id = newId != -1 ? newId: 1;
 
-
+        // get selected device from central unit
         if (centralUnit != null) {
-            // get selected device from central unit
             device = (Device) centralUnit.getItemById(device_id);
             Log.d(TAG, "onCreate() Device " + device_id + ":" + device);
         }
@@ -118,10 +107,12 @@ public class DeviceActivity extends ActionBarActivity {
 
 
 
+        // set device information on the activity
         if (device != null) {
-            // sets device information on UI
 
-            Log.i(TAG, "onCreate() Device: " + device + " name: " + device.getName() + " device id: " + device.getId() + " type: " + device.getType() + " valueType: " + device.getValueType());
+            Log.i(TAG, "onCreate() Device obj: " + device + " name: " + device.getName() +
+                    " device id: " + device.getId() + " type: " + device.getType() + " valueType: "
+                    + device.getValueType() + " value: " + device.getBinaryValue());
 
             // container hierarchy
             textViewContainerName.setText( getContainerHierarchy(device) );
@@ -199,7 +190,7 @@ public class DeviceActivity extends ActionBarActivity {
                 double scaledProgress =
                     scale(progress, 0, seekBar.getMax(), device.getMinValue(), device.getMaxValue() );
                 try {
-                    centralUnit.sendDecimalValueChanged(device, scaledProgress);
+                    centralUnit.setDecimalValueChanged(device, scaledProgress);
                     textViewSeekBarValue.setText("Value: " + String.format("%1.2f", scaledProgress) + " " + device.getUnit()); // display device value
                 } catch (Exception e) {
                     Log.e(TAG, "onProgressChanged() Unable to set device value: " + e.getMessage() );
@@ -220,7 +211,8 @@ public class DeviceActivity extends ActionBarActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 try {
-                    centralUnit.sendBinaryValueChanged(device, isChecked);
+                    Log.d(TAG, "onCheckedChanged = " + isChecked);
+                    centralUnit.setBinaryValueChanged(device, isChecked);
                     textViewSwitchValue.setText(Boolean.toString(isChecked)); // display device value
                 } catch (Exception e) {
                     Log.e(TAG, "onProgressChanged() Unable to device value: " + e.getMessage() );

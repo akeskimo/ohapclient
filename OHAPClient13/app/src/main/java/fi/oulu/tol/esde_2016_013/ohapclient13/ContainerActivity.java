@@ -10,9 +10,10 @@ package fi.oulu.tol.esde_2016_013.ohapclient13;
  * v1.1     Aapo Keskimolo      Display device value on ListView and load shared preference upon startup
  * v1.2     Aapo Keskimolo      Added alert dialogs, connection observer, ping menu bar item and networking support
  * v1.3     Aapo Keskimolo      Fixed inconsistent container listener list
- *
+ * v2.0     Aapo Keskimolo      Ready for final review
+ * v2.1     Aapo Keskimolo      Added offline simulation mode
  * @author Aapo Keskimolo &lt;aapokesk@gmail.com>
- * @version 1.2
+ * @version 2.1
  */
 
 import android.app.AlertDialog;
@@ -50,7 +51,6 @@ import com.opimobi.ohap.message.IncomingMessage;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import fi.oulu.tol.esde_2016_013.ohapclient13.utility.LogContainer;
@@ -84,6 +84,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     // alert dialog box
     private boolean alertShown = false;
     AlertDialog alert = null;
+    boolean isAlertDialogBoxSimulationVisible = false;
 
     // container listener
     List<Long> listeningContainerIds = new ArrayList<>();
@@ -93,11 +94,9 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     // log utilities place holder
     LogContainer logContainer = null;
 
-    // preference change variable
-    private boolean preferenceChanged = false;
-
     // activity state
-    private boolean active;
+    private boolean activityActive = true;
+    private boolean simulationMode = false;
 
     // display headers
     TextView textViewContainerName;
@@ -107,7 +106,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
     private TimerThread timer = null;
 
-    // timer thread for querying connection status
+    // timer thread to update text status widgets (runnable implemented outside of the inner-class)
     private class TimerThread extends Thread {
 
         // sleep time between polls
@@ -132,17 +131,14 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     };
 
 
-    // runnable object to update the connection status text view widgets
+    // thread runnable for updating connection status text widgets
     private Runnable updateViewRunnable = new Runnable() {
-
         @Override
         public void run() {
             // update container activity headers (text views)
             textViewContainerName.setText(container.getName());
             textViewUrlAddress.setText(centralUnit.getURL().toString());
             textViewStatus.setText(centralUnit.getConnectionStatus().toString());
-
-//            Log.d(TAG, "Container name = " + container.getName() + "\nURL = " + centralUnit.getURL() + "\nStatus = " + centralUnit.getConnectionStatus().toString());
         }
     };
 
@@ -170,9 +166,15 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE); // sensor system mgr
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER); // acc sensor
 
-        // getting the instance of CentralUnit
+        // Singleton instance of the Main CentralUnit containing devices / containers
         centralUnit = CentralUnitConnection.getInstance();
-        Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
+
+        // at first init, ask user in which mode the app should be run
+        if (centralUnit.isInitialConnection() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ) {
+            String msg = "Do you want to switch to simulation mode?";
+            alertDialogQuestionOnlineOrSimulation(msg, "Continue online", "Simulation mode");
+            Log.i(TAG, "onCreate() centralUnit obj: " + centralUnit + " name: " + centralUnit.getName() + " container id: " + centralUnit.getId() + " item count: " + centralUnit.getItemCount() + " listening state: " + centralUnit.isListening());
+        }
 
         // loads preferences (Central Unit URL, Auto-connect, etc.)
         loadPreferences();
@@ -183,11 +185,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     protected void onResume() {
         super.onResume();
 
-        Log.d(TAG, "onResume() Called"); 
+        Log.d(TAG, "onResume() Called");
 
         // get container passed to the activity
         long containerId = getIntent().getLongExtra(CONTAINER_ID, 0);
-        Log.d(TAG, "onResume() Got intent extra, CONTAINER_ID = " + containerId);
+        Log.d(TAG, "onResume() Intent received new container: id = " + containerId);
         container = (Container) centralUnit.getItemById(containerId);
 
         // create list view objects with list adapter
@@ -204,6 +206,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         textViewContainerName.setText(centralUnit.getName());
         textViewUrlAddress.setText(centralUnit.getURL().toString());
         textViewStatus.setText(centralUnit.getConnectionStatus().toString());
+
+        activityActive = true;
     }
 
 
@@ -216,7 +220,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         if (shakeReconnectEnabled)
             sensorManager.unregisterListener(this);
 
-        active = false;
+        activityActive = false;
         stop();
     }
 
@@ -268,7 +272,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onStart();
         Log.d(TAG, "onStart() Called");
 //
-//        active = true;
+//        activityActive = true;
 //
 //        if (timer == null)
 //            timer = new TimerThread();
@@ -283,7 +287,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         super.onStop();
         Log.d(TAG, "onStop() Called");
 
-//        active = false;
+//        activityActive = false;
 //        stop();
     }
 
@@ -364,7 +368,6 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         String url_value;
         String autoconnect_key;
         String shake_key;
-        String shake_value;
         boolean autoConnect;
 
         // preference keys
@@ -445,7 +448,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
 
         Log.d(TAG, "connect() isAutoConnect() = " + centralUnit.isAutoConnect() + ", checkNetwork() = " + checkNetwork() + ", isRunning() = " + centralUnit.isRunning() + ", isConnected() = " + centralUnit.isConnected());
 
-        if (centralUnit.isAutoConnect()) {
+        if (centralUnit.isAutoConnect() && (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) ){
             // auto-connect setting is enabled
 
             if (checkNetwork()) {
@@ -470,9 +473,11 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             stop();
 
             // display a dialog to inform user that auto connection is switched off
-            String ttl = "Auto-connect is off";
-            String msg = "You may switch auto-connection on in 'Settings'-menu or shake the device to force reconnect";
-            alertDialogMessageOk(ttl, msg, "OK");
+            if (centralUnit.getConnectionStatus() != CentralUnitConnection.Status.SIMULATION) {
+                String ttl = "Auto-connect is off";
+                String msg = "You may switch auto-connection on in 'Settings'-menu or shake the device to force reconnect";
+                alertDialogMessageOk(ttl, msg, "OK");
+            }
         }
     }
 
@@ -570,49 +575,89 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
     public void alertDialogMessageOk(String title, String message, String buttonText) {
         // Pop alert dialog box with 1 button
 
-        final Builder alertBuilder = new Builder(this); // alert dialog box
+        Log.d(TAG, "alertDialogMessageOk() Enter");
 
-        if (alertShown) {
+        Builder alertBuilderDialogBoxOk = new Builder(this); // alert dialog box
+
+        if (!isAlertDialogBoxSimulationVisible) {
             // dismiss the alert dialog, in case it is visible
-            alert.cancel();
+            Log.d(TAG, "Dismissing alert dialog box");
+            if (alert != null) {
+                alert.cancel();
+            }
             alertShown = false;
-        }
 
-        alertBuilder.setTitle(title);
-        alertBuilder.setMessage(message);
-        alertBuilder.setPositiveButton(buttonText, null);
+            alertBuilderDialogBoxOk.setTitle(title);
+            alertBuilderDialogBoxOk.setMessage(message);
+            alertBuilderDialogBoxOk.setPositiveButton(buttonText, null);
 
-        alert = alertBuilder.create();
-        if (active) {
-            alert.show();
-            alertShown = true;
+            alert = alertBuilderDialogBoxOk.create();
+
+            if (activityActive) {
+                Log.d(TAG, "Showing alert dialog box");
+                alert.show();
+                alertShown = true;
+            }
         }
     }
 
-    public void alertDialogCustom(String title, String message, String... buttonText) {
-        // pop alert dialog box with 1 button
+    public void alertDialogQuestionOnlineOrSimulation(String title, String option1, String option2){
 
-        final Builder alertBuilder = new Builder(this); // alert dialog box
+        Log.d(TAG, "alertDialogQuestionOnlineOrSimulation() Enter");
+
+        final Builder alertBuilderDialogBoxSimulation = new Builder(this);
+        final ContainerActivity context = this;
 
         if (alertShown) {
-            // dismiss the alert dialog if already visible
+            // dismiss any alert dialog
+            Log.d(TAG, "Dismissing alert dialog box");
             alert.cancel();
             alertShown = false;
         }
 
-        alertBuilder.setTitle(title);
-//        alertBuilder.setMessage(message);
+        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
 
-        alertBuilder.setItems(buttonText,
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getApplicationContext(), "Clicked " + which, Toast.LENGTH_SHORT).show();
+                String urlStr = textViewUrlAddress.getText().toString();
+
+                try {
+                    switch (which) {
+                        case DialogInterface.BUTTON_POSITIVE:
+                            // set central unit with the url obtained from preferences
+                            Log.i(TAG, "Initializing central unit for online mode:");
+                            centralUnit.initialize(new URL(urlStr), context);
+                            Log.i(TAG, "Online mode selected: Make sure that the OHAP server is running and that you have access to the network");
+                            break;
+
+                        case DialogInterface.BUTTON_NEGATIVE:
+                            if (centralUnit != null) {
+                                Log.i(TAG, "Initializing central unit with dummy devices for simulation mode:");
+                                centralUnit.initializeWithDummies(new URL(urlStr), context, container, 10);
+                                centralUnit.setConnectionStatus(CentralUnitConnection.Status.SIMULATION);
+                                simulationMode = true;
+                                Log.i(TAG, "Initialisation of simulation mode is finished.");
+                            }
+                            break;
                     }
-                });
 
-        alert = alertBuilder.create();
-        alert.show();
-        alertShown = true;
+                } catch (MalformedURLException e) {
+                    Log.e(TAG, "alertDialogQuestionOnlineOrSimulation() Malformed url: \"" + urlStr + "\", reason: " + e.getMessage());
+                }
+            }
+        };
+
+        alertBuilderDialogBoxSimulation.setMessage(title).setPositiveButton(option1, dialogClickListener)
+                .setNegativeButton(option2, dialogClickListener);
+
+        alert = alertBuilderDialogBoxSimulation.create();
+        if (activityActive) {
+            Log.d(TAG, "Showing alert dialog box");
+            alert.show();
+            alertShown = true;
+            isAlertDialogBoxSimulationVisible = true;
+        }
+
     }
 
     @Override
@@ -1144,13 +1189,7 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
         String ttl = "Connection error";
         String msg;
 
-        if (messageAction.equals("No connection")) {
-            msg = "Unable to connect to server\n" + centralUnit.getURL() + "\n\nCheck URL and port in settings";
-            alertDialogMessageOk(ttl, msg, "OK");
-            stop();
-            connect();
-
-        } else if (messageAction.equals("Connection closed")) {
+         if (messageAction.equals("Connection closed")) {
             msg = messageAction + " to server " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             alertDialogMessageOk(ttl, msg, "OK");
             stopContainerListening();
@@ -1161,8 +1200,8 @@ public class ContainerActivity extends ActionBarActivity implements ConnectionOb
             msg = "Connected to server: " + centralUnit.getURL().getHost() + ":" + centralUnit.getURL().getPort();
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
 
-        } else if (messageAction.equals("Reconnecting")){
-            msg = "Connecting to server...";
+        } else if (messageAction.equals("Reconnecting")) {
+            msg = "Trying to connect to server...";
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
 
         } else {

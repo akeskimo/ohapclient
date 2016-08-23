@@ -33,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
+import java.sql.Connection;
 import java.util.Random;
 
 
@@ -65,6 +66,7 @@ public class CentralUnitConnection extends CentralUnit {
     private boolean reconnectRequest;
     private boolean outgoingMessageActionFinished = true;
     private boolean stopCalled = false;
+    private boolean initialConnection = true;
 
     // connection status
     private Status connectionStatus = Status.OFFLINE;
@@ -93,29 +95,38 @@ public class CentralUnitConnection extends CentralUnit {
         this.observer = observer;
     }
 
-    public Status getConnectionStatus() {
-        return connectionStatus;
-    }
-
-    public void setConnectionStatus(Status connectionStatus) {
-        this.connectionStatus = connectionStatus;
-    }
-
-
-    public enum Status {
-        ONLINE,
-        OFFLINE,
-        CONNECTING
-    }
-
-
-    public void initialize(URL url, ConnectionObserver observer, Container container, int nDummies) {
+    public void initializeWithDummies(URL url, ConnectionObserver observer, Container container, int nDummies) {
         // initializes central unit singleton with dummy devices
         createDummies(container, nDummies);
         setName("Dummy Container");
         setDescription("Dummies have been created during initialization of the class");
         instance.setURL(url);
         this.observer = observer;
+    }
+
+    public Status getConnectionStatus() {
+        return connectionStatus;
+    }
+
+    public void setConnectionStatus(Status connectionStatus) {
+        this.connectionStatus = connectionStatus;
+        Log.d(TAG, "setConnectionStatus() Connection status set to: " + connectionStatus);
+    }
+
+    public boolean isInitialConnection() {
+        return initialConnection;
+    }
+
+    public void setInitialConnection(boolean initialConnection) {
+        this.initialConnection = initialConnection;
+        Log.d(TAG, "setInitialConnection() Initial connection status = " + initialConnection);
+    }
+
+
+    public enum Status {
+        ONLINE,
+        OFFLINE,
+        SIMULATION
     }
 
     public void setReconnectRequest(boolean reconnectRequest) {
@@ -283,7 +294,10 @@ public class CentralUnitConnection extends CentralUnit {
             int timeout = 5000;
             int attempt = 0;
 
-            while (running) {
+            while (running && (connectionStatus != Status.SIMULATION) ) {
+
+                Log.d(TAG, "connection status: " + connectionStatus);
+
                 attempt++;
 
                 try {
@@ -308,17 +322,25 @@ public class CentralUnitConnection extends CentralUnit {
                     return;
 
                 } catch (IOException e) {
-                    // If connection failed -> update flag, log and post error to UI
+                    // If connection failed
 
-                    setConnectionStatus(Status.OFFLINE);
+                    if (getConnectionStatus() != Status.SIMULATION) {
+                        setConnectionStatus(Status.OFFLINE);
+                    }
+
+                    if (initialConnection) {
+                        Log.d(TAG, "Sent initial connection message!");
+                        outgoingMessageHandler.post(new ActivityAction("online_or_simulation"));
+                        setInitialConnection(false);
+                    }
 
                     Log.e(TAG, "IncomingThread.connect() Unable to connect to " + getURL().getHost() + ":" + getURL().getPort() + "\nreason: " + e.getMessage() + ". Attempt = " + attempt + " Retrying in " + timeout / 1000 + " seconds.");
 
                     if (observer != null && incomingHandler != null) {
                         if (attempt == 1) {
                             // send error message to connection observer
-                            String errorMsg = "No connection";
-                            incomingHandler.post(new ActivityAction(errorMsg));
+//                            String errorMsg = "No connection";
+//                            incomingHandler.post(new ActivityAction(errorMsg));
                         } else if (attempt > 1) {
                             incomingHandler.post(new ActivityAction("Reconnecting"));
                         }
@@ -339,7 +361,9 @@ public class CentralUnitConnection extends CentralUnit {
             }
 
             setConnected(false);
-            setConnectionStatus(Status.OFFLINE);
+            if (getConnectionStatus() != Status.SIMULATION) {
+                setConnectionStatus(Status.OFFLINE);
+            }
         }
 
 
@@ -357,9 +381,6 @@ public class CentralUnitConnection extends CentralUnit {
                         socket.close();
                     }
                     if (observer != null && incomingHandler != null) {
-                        // notify observers
-                        String errorMsg = "Connection closed";
-                        incomingHandler.post(new ActivityAction(errorMsg));
                         setConnected(false);
                     } else {
                         Log.e(TAG, "close() Attempt to notify observer failed: observer or incominghandler = null");
@@ -374,7 +395,9 @@ public class CentralUnitConnection extends CentralUnit {
                 Log.i(TAG, "close() Connection to server was closed.");
 
                 setConnected(false);
-                setConnectionStatus(Status.OFFLINE);
+                if (getConnectionStatus() != Status.SIMULATION) {
+                    setConnectionStatus(Status.OFFLINE);
+                }
             }
         }
     }
@@ -514,14 +537,34 @@ public class CentralUnitConnection extends CentralUnit {
 
     @Override
     protected void changeBinaryValue(Device device, boolean value) {
-        sendBinaryValueChanged(device, value);
-        Log.d(TAG, "changeDecimalValue() Device " + device.getId() + " binary value changed to: " + value);
+        Log.d(TAG, "Connection status: " + getConnectionStatus());
+//        if (getConnectionStatus() != Status.SIMULATION) {
+//            sendBinaryValueChanged(device, value);
+//        } else {
+            Log.d(TAG, "changeBinaryValue() Device " + device.getId() + " old value is: " + device.getBinaryValue());
+            device = (Device)this.getItemById(device.getId());
+            device.setBinaryValue(value);
+            Log.d(TAG, "changeBinaryValue() Device " + device.getId() + " new value is: " + device.getBinaryValue());
+//        }
+    }
+
+    public void setBinaryValueChanged(Device device, boolean value) {
+        changeBinaryValue(device, value);
     }
 
     @Override
     protected void changeDecimalValue(Device device, double value) {
+        if (getConnectionStatus() != Status.SIMULATION) {
+            sendDecimalValueChanged(device, value);
+        } else {
+            device = (Device)this.getItemById(device.getId());
+            device.setDecimalValue(value);
+            Log.d(TAG, "changeDecimalValue() Device " + device.getId() + " decimal value changed to: " + device.getDecimalValue());
+        }
+    }
+
+    public void setDecimalValueChanged(Device device, double value) {
         device.changeDecimalValue(value);
-        Log.d(TAG, "changeDecimalValue() Device " + device.getId() + " decimal value changed to: " + value);
     }
 
 
@@ -764,12 +807,16 @@ public class CentralUnitConnection extends CentralUnit {
         if (randNum == 1) {
             newDevice = new Device(container, dummyNumber, Device.Type.ACTUATOR, Device.ValueType.BINARY);
             newDevice.setName("Ceiling Lamp");
-            newDevice.setBinaryValue(false);
-        }
-        else {
-            newDevice = new Device(container, dummyNumber, Device.Type.SENSOR, Device.ValueType.DECIMAL);
-            newDevice.setDecimalValue(0);
+            boolean newBinaryValue = rand.nextBoolean();
+            newDevice.setBinaryValue(newBinaryValue);
+
+        } else {
+            newDevice = new Device(container, dummyNumber, Device.Type.ACTUATOR, Device.ValueType.DECIMAL);
+            double newDecimalValue = 10 + (35-10) * rand.nextDouble();
+            newDevice.setDecimalValue(newDecimalValue);
             newDevice.setName("Temperature Sensor");
+            newDevice.setUnit("Celsius", "C");
+            newDevice.setMinMaxValues(0.0, 40.0);
         }
 
         newDevice.setDescription( "DeviceID: " + newDevice.getId() );
